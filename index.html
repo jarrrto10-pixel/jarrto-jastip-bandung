@@ -82,14 +82,14 @@
             </div>
           </div>
 
-          <!-- CONTAINER VARIAN RASA (DINAMIS DROPDOWN / TEXT) -->
+          <!-- CONTAINER VARIAN RASA (HANYA NAMA RASA SAJA TANPA TEKS HARGA) -->
           <div class="mb-2" id="varianContainer">
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
             <select class="form-select" id="varianTiramisusuSelect" onchange="handleTiramisusuVarianChange()">
-              <option value="Original" data-harga="89000">Original (Rp 89.000)</option>
-              <option value="Cookies n Cream" data-harga="89000">Cookies n Cream (Rp 89.000)</option>
-              <option value="Matcha" data-harga="99000">Matcha (Rp 99.000)</option>
-              <option value="Pistachio Kunafa" data-harga="119000">Pistachio Kunafa (Rp 119.000)</option>
+              <option value="Original" data-harga="89000">Original</option>
+              <option value="Cookies n Cream" data-harga="89000">Cookies n Cream</option>
+              <option value="Matcha" data-harga="99000">Matcha</option>
+              <option value="Pistachio Kunafa" data-harga="119000">Pistachio Kunafa</option>
             </select>
             <input type="text" class="form-control d-none" id="varianProdukManual" placeholder="Varian Rasa" value="Varian Rasa"
                    onclick="this.select()" 
@@ -118,7 +118,9 @@
             </div>
             <div class="col-4">
               <label class="form-label small fw-semibold mb-1">Harga Item / Pcs</label>
-              <input type="number" class="form-control bg-light" id="hargaProduk" min="0" required value="89000" readonly oninput="hitungTotal()">
+              <!-- Menampilkan awalan Rp dengan nilai otomatis -->
+              <input type="text" class="form-control bg-light fw-semibold" id="hargaProdukDisplay" readonly value="Rp 89.000" oninput="handleManualHargaInput(this)">
+              <input type="hidden" id="hargaProduk" value="89000">
             </div>
             <div class="col-4">
               <label class="form-label small fw-semibold mb-1">Fee / pcs</label>
@@ -437,25 +439,21 @@
     }
   }
 
-  // Aturan Cut-off: Senin-Jumat ikut Sabtu minggu ini. Sabtu & Minggu ikut Sabtu minggu depan.
   function calculateReadyDate(dateStr) {
     if (!dateStr) return { iso: '', formatted: '', hariNama: '' };
     const parts = dateStr.split('-');
     const dt = new Date(parts[0], parts[1] - 1, parts[2]);
-    const day = dt.getDay(); // 0: Min, 1: Sen, ..., 5: Jum, 6: Sab
+    const day = dt.getDay();
 
     const namaHariList = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
     const hariNama = namaHariList[day];
 
     let targetDate = new Date(dt);
     if (day >= 1 && day <= 5) {
-      // Senin-Jumat: Sabtu minggu yang sama
       targetDate.setDate(dt.getDate() + (6 - day));
     } else if (day === 6) {
-      // Sabtu: Cut-off terlewat, ikut Sabtu minggu depan (+7 hari)
       targetDate.setDate(dt.getDate() + 7);
     } else if (day === 0) {
-      // Minggu: Ikut Sabtu minggu depannya (+6 hari)
       targetDate.setDate(dt.getDate() + 6);
     }
 
@@ -502,7 +500,8 @@
     const toko = document.getElementById('tokoPesanan').value;
     const selectEl = document.getElementById('varianTiramisusuSelect');
     const textEl = document.getElementById('varianProdukManual');
-    const hargaEl = document.getElementById('hargaProduk');
+    const hargaDisplayEl = document.getElementById('hargaProdukDisplay');
+    const hargaValEl = document.getElementById('hargaProduk');
 
     if (toko === 'Tiramisusu') {
       selectEl.classList.remove('d-none');
@@ -511,10 +510,12 @@
     } else {
       selectEl.classList.add('d-none');
       textEl.classList.remove('d-none');
-      hargaEl.readOnly = false;
-      hargaEl.classList.remove('bg-light');
-      if (hargaEl.value === '89000' || hargaEl.value === '99000' || hargaEl.value === '119000') {
-        hargaEl.value = '0';
+      hargaDisplayEl.readOnly = false;
+      hargaDisplayEl.classList.remove('bg-light');
+      
+      if (hargaValEl.value === '89000' || hargaValEl.value === '99000' || hargaValEl.value === '119000') {
+        hargaValEl.value = '0';
+        hargaDisplayEl.value = 'Rp 0';
       }
       hitungTotal();
     }
@@ -525,10 +526,21 @@
     const selectedOption = selectEl.options[selectEl.selectedIndex];
     const harga = parseInt(selectedOption.getAttribute('data-harga')) || 89000;
     
-    const hargaEl = document.getElementById('hargaProduk');
-    hargaEl.value = harga;
-    hargaEl.readOnly = true;
-    hargaEl.classList.add('bg-light');
+    const hargaDisplayEl = document.getElementById('hargaProdukDisplay');
+    const hargaValEl = document.getElementById('hargaProduk');
+
+    hargaValEl.value = harga;
+    hargaDisplayEl.value = 'Rp ' + Number(harga).toLocaleString('id-ID');
+    hargaDisplayEl.readOnly = true;
+    hargaDisplayEl.classList.add('bg-light');
+    hitungTotal();
+  }
+
+  function handleManualHargaInput(inputEl) {
+    let cleanVal = inputEl.value.replace(/[^0-9]/g, '');
+    let numVal = parseInt(cleanVal) || 0;
+    document.getElementById('hargaProduk').value = numVal;
+    inputEl.value = numVal > 0 ? 'Rp ' + numVal.toLocaleString('id-ID') : 'Rp 0';
     hitungTotal();
   }
 
@@ -971,7 +983,8 @@
     const toko = document.getElementById('editToko').value;
     const selectEl = document.getElementById('editVarianTiramisusu');
     const textEl = document.getElementById('editVarianManual');
-    const hargaEl = document.getElementById('editHarga');
+    const hargaDisplayEl = document.getElementById('editHargaDisplay');
+    const hargaValEl = document.getElementById('editHarga');
 
     if (toko === 'Tiramisusu') {
       selectEl.classList.remove('d-none');
@@ -980,8 +993,8 @@
     } else {
       selectEl.classList.add('d-none');
       textEl.classList.remove('d-none');
-      hargaEl.readOnly = false;
-      hargaEl.classList.remove('bg-light');
+      hargaDisplayEl.readOnly = false;
+      hargaDisplayEl.classList.remove('bg-light');
       hitungEditTotal();
     }
   }
@@ -991,10 +1004,21 @@
     const selectedOption = selectEl.options[selectEl.selectedIndex];
     const harga = parseInt(selectedOption.getAttribute('data-harga')) || 89000;
     
-    const hargaEl = document.getElementById('editHarga');
-    hargaEl.value = harga;
-    hargaEl.readOnly = true;
-    hargaEl.classList.add('bg-light');
+    const hargaDisplayEl = document.getElementById('editHargaDisplay');
+    const hargaValEl = document.getElementById('editHarga');
+
+    hargaValEl.value = harga;
+    hargaDisplayEl.value = 'Rp ' + Number(harga).toLocaleString('id-ID');
+    hargaDisplayEl.readOnly = true;
+    hargaDisplayEl.classList.add('bg-light');
+    hitungEditTotal();
+  }
+
+  function handleEditManualHargaInput(inputEl) {
+    let cleanVal = inputEl.value.replace(/[^0-9]/g, '');
+    let numVal = parseInt(cleanVal) || 0;
+    document.getElementById('editHarga').value = numVal;
+    inputEl.value = numVal > 0 ? 'Rp ' + numVal.toLocaleString('id-ID') : 'Rp 0';
     hitungEditTotal();
   }
 
@@ -1026,6 +1050,7 @@
     const isSuper = currentLoggedInAdmin && currentLoggedInAdmin.role === 'superadmin';
     const defaultReady = o.lokasiToko && o.lokasiToko !== '-' ? o.lokasiToko : calculateReadyDate(o.batchJastip).formatted;
     const isTiramisusu = curBrand === 'Tiramisusu';
+    const currentPrice = Number(o.hargaProduk) || 0;
 
     const editBody = document.getElementById('editModalBody');
     editBody.innerHTML = `
@@ -1056,10 +1081,10 @@
           <div class="col-12">
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
             <select class="form-select form-select-sm ${!isTiramisusu ? 'd-none' : ''}" id="editVarianTiramisusu" onchange="handleEditTiramisusuVarianChange()">
-              <option value="Original" data-harga="89000" ${o.varianProduk === 'Original' ? 'selected' : ''}>Original (Rp 89.000)</option>
-              <option value="Cookies n Cream" data-harga="89000" ${o.varianProduk === 'Cookies n Cream' ? 'selected' : ''}>Cookies n Cream (Rp 89.000)</option>
-              <option value="Matcha" data-harga="99000" ${o.varianProduk === 'Matcha' ? 'selected' : ''}>Matcha (Rp 99.000)</option>
-              <option value="Pistachio Kunafa" data-harga="119000" ${o.varianProduk === 'Pistachio Kunafa' ? 'selected' : ''}>Pistachio Kunafa (Rp 119.000)</option>
+              <option value="Original" data-harga="89000" ${o.varianProduk === 'Original' ? 'selected' : ''}>Original</option>
+              <option value="Cookies n Cream" data-harga="89000" ${o.varianProduk === 'Cookies n Cream' ? 'selected' : ''}>Cookies n Cream</option>
+              <option value="Matcha" data-harga="99000" ${o.varianProduk === 'Matcha' ? 'selected' : ''}>Matcha</option>
+              <option value="Pistachio Kunafa" data-harga="119000" ${o.varianProduk === 'Pistachio Kunafa' ? 'selected' : ''}>Pistachio Kunafa</option>
             </select>
             <input type="text" class="form-control form-control-sm ${isTiramisusu ? 'd-none' : ''}" id="editVarianManual" value="${o.varianProduk || 'Varian Rasa'}" onclick="this.select()">
           </div>
@@ -1083,7 +1108,8 @@
           </div>
           <div class="col-4">
             <label class="form-label small fw-semibold mb-1">Harga Item / Pcs</label>
-            <input type="number" class="form-control form-control-sm ${isTiramisusu ? 'bg-light' : ''}" id="editHarga" value="${o.hargaProduk || 0}" min="0" required ${isTiramisusu ? 'readonly' : ''} oninput="hitungEditTotal()">
+            <input type="text" class="form-control form-control-sm ${isTiramisusu ? 'bg-light' : ''} fw-semibold" id="editHargaDisplay" value="Rp ${currentPrice.toLocaleString('id-ID')}" ${isTiramisusu ? 'readonly' : ''} oninput="handleEditManualHargaInput(this)">
+            <input type="hidden" id="editHarga" value="${currentPrice}">
           </div>
           <div class="col-4">
             <label class="form-label small fw-semibold mb-1">Fee / pcs</label>
