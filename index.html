@@ -22,12 +22,14 @@
       border-radius: 6px;
       display: inline-block;
     }
-    /* Accounting Status Styles */
+    /* Accounting Payment Status Styles */
+    .status-pay-Full-Payment { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .status-pay-Order-Only { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .status-pay-Fee-Only { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
     .status-pay-Unpaid { background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
-    .status-pay-Paid { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
     .status-pay-Refunded { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
-    /* Logistics Status Styles */
+    /* Logistics Tracking Status Styles */
     .status-log-Order-Placed { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
     .status-log-Purchased { background-color: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
     .status-log-In-Transit { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
@@ -156,24 +158,47 @@
     <!-- TABEL MONITORING (MODE ADMIN & SUPERADMIN) -->
     <div id="adminPanel" class="col-12 d-none">
       <div class="card-custom p-3">
-        <!-- RINGKASAN PENDAPATAN (HANYA SUPERADMIN) -->
-        <div class="row g-2 mb-3" id="summaryFinanceRow">
-          <div class="col-4">
-            <div class="summary-card text-center">
-              <span class="text-muted d-block" style="font-size: 0.68rem;">Total Modal Asli</span>
-              <strong class="text-secondary" id="sumModal">Rp 0</strong>
+        <!-- RINGKASAN PENDAPATAN & DETAIL STATUS PAYMENT (HANYA SUPERADMIN) -->
+        <div id="summaryFinanceRow" class="mb-3">
+          <div class="row g-2 mb-2">
+            <div class="col-md-4">
+              <div class="summary-card text-center">
+                <span class="text-muted d-block" style="font-size: 0.68rem;">Total Modal Asli (Order)</span>
+                <strong class="text-secondary" id="sumModal">Rp 0</strong>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="summary-card text-center bg-success-subtle border-success-subtle">
+                <span class="text-success-emphasis d-block" style="font-size: 0.68rem;">Total Fee Jastip (Laba)</span>
+                <strong class="text-success" id="sumFee">Rp 0</strong>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="summary-card text-center bg-primary-subtle border-primary-subtle">
+                <span class="text-primary-emphasis d-block" style="font-size: 0.68rem;">Total Tagihan Keseluruhan</span>
+                <strong class="text-primary" id="sumTagihan">Rp 0</strong>
+              </div>
             </div>
           </div>
-          <div class="col-4">
-            <div class="summary-card text-center bg-success-subtle border-success-subtle">
-              <span class="text-success-emphasis d-block" style="font-size: 0.68rem;">Fee Jastip (Laba)</span>
-              <strong class="text-success" id="sumFee">Rp 0</strong>
+
+          <div class="row g-2">
+            <div class="col-md-4">
+              <div class="summary-card text-center border-success bg-white">
+                <span class="text-success fw-bold d-block" style="font-size: 0.68rem;">✅ Full Payment Terkumpul</span>
+                <strong class="text-success" id="sumFullPayment">Rp 0</strong>
+              </div>
             </div>
-          </div>
-          <div class="col-4">
-            <div class="summary-card text-center bg-primary-subtle border-primary-subtle">
-              <span class="text-primary-emphasis d-block" style="font-size: 0.68rem;">Total Tagihan</span>
-              <strong class="text-primary" id="sumTagihan">Rp 0</strong>
+            <div class="col-md-4">
+              <div class="summary-card text-center border-warning bg-white">
+                <span class="text-warning-emphasis fw-bold d-block" style="font-size: 0.68rem;">⚠️ Order Only (Tertagih Modal Saja)</span>
+                <strong class="text-warning-emphasis" id="sumOrderOnly">Rp 0</strong>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="summary-card text-center border-danger bg-white">
+                <span class="text-danger fw-bold d-block" style="font-size: 0.68rem;">⏳ Fee Belum Lunas (Outstanding Fee)</span>
+                <strong class="text-danger" id="sumOutstandingFee">Rp 0</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -185,14 +210,16 @@
           <div class="col-md-3">
             <select id="filterPayStatus" class="form-select" onchange="renderTable()">
               <option value="ALL">Semua Payment</option>
+              <option value="Full Payment">Full Payment</option>
+              <option value="Order Only">Order Only (Fee Belum)</option>
+              <option value="Fee Only">Fee Only</option>
               <option value="Unpaid">Unpaid</option>
-              <option value="Paid">Paid</option>
               <option value="Refunded">Refunded</option>
             </select>
           </div>
           <div class="col-md-2">
             <select id="filterLogStatus" class="form-select" onchange="renderTable()">
-              <option value="ALL">Semua Fulfillment</option>
+              <option value="ALL">Semua Order Tracking</option>
               <option value="Order Placed">Order Placed</option>
               <option value="Purchased">Purchased</option>
               <option value="In Transit">In Transit</option>
@@ -220,7 +247,7 @@
                 <th>QTY</th>
                 <th>TAGIHAN</th>
                 <th>STATUS PAYMENT</th>
-                <th>FULFILLMENT</th>
+                <th>ORDER TRACKING</th>
                 <th>ACTION</th>
               </tr>
             </thead>
@@ -457,8 +484,7 @@
     if (!dateStr) return null;
     if (typeof dateStr === 'string' && dateStr.includes('T')) {
       const dtUtc = new Date(dateStr);
-      const dtWib = new Date(dtUtc.getTime() + (7 * 60 * 60 * 1000));
-      return dtWib;
+      return new Date(dtUtc.getTime() + (7 * 60 * 60 * 1000));
     }
     const parts = String(dateStr).split('-');
     if (parts.length >= 3) {
@@ -583,7 +609,7 @@
   function getFeePerPcs(brand, qty) {
     const b = (brand || '').trim();
     if (b === 'Tiramisusu') return 30000;
-    if (b === 'Bolu Susu Lembang') return 15000;
+    if (b === 'Bolu Susu Lembang') return 10000;
     if (b === 'Kartika Sari') return 25000;
     if (b === 'Goela Semoet') return 25000;
     if (b === 'Roti Segar') {
@@ -913,7 +939,9 @@
 
   function normalizePaymentStatus(val) {
     const s = String(val || '').trim().toLowerCase();
-    if (s === 'dibayar' || s === 'paid') return 'Paid';
+    if (s === 'full payment' || s === 'dibayar' || s === 'paid') return 'Full Payment';
+    if (s === 'order only') return 'Order Only';
+    if (s === 'fee only') return 'Fee Only';
     if (s === 'batal' || s === 'refunded') return 'Refunded';
     return 'Unpaid';
   }
@@ -930,7 +958,8 @@
   }
 
   function getPaymentBadgeClass(status) {
-    return `badge-status status-pay-${status}`;
+    const safe = status.replace(/\s+/g, '-');
+    return `badge-status status-pay-${safe}`;
   }
 
   function getLogisticsBadgeClass(status) {
@@ -980,13 +1009,13 @@
       lokasiToko: "-",
       varianProduk: varian,
       batchJastip: document.getElementById('tanggalOrder').value,
-      dayaTahan: "4",
+      dayaTahan: "Lihat Expired Date Pada Item", // Default otomatis untuk customer
       qty: qty,
       hargaProduk: harga,
       feeJastip: feePerPcs,
       hargaJual: hargaJual,
       totalTagihan: totalTagihan,
-      statusOrder: "Unpaid" // Default accounting payment status
+      statusOrder: "Unpaid"
     };
 
     const formData = new URLSearchParams();
@@ -1027,6 +1056,7 @@
     const orderDateRes = calculateReadyDate(o.batchJastip);
     const payStatus = normalizePaymentStatus(o.statusOrder);
     const logStatus = normalizeLogisticsStatus(o.statusFulfillment || o.statusOrder, payStatus);
+    const expInfo = o.dayaTahan || 'Lihat Expired Date Pada Item';
 
     const modalContent = document.getElementById('modalContent');
     modalContent.innerHTML = `
@@ -1038,13 +1068,13 @@
         <li class="list-group-item d-flex justify-content-between p-2"><span>Varian Rasa:</span> <strong class="text-primary">${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Original'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Tanggal Order:</span> <strong>${orderDateRes.formattedFull || formatCleanDate(o.batchJastip)}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2 bg-warning-subtle text-dark"><span>Pesanan Ready:</span> <strong class="text-primary">${readyText || '-'}</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Daya Tahan:</span> <strong>${o.dayaTahan || '-'} Hari</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Daya Tahan / Expired:</span> <strong>${expInfo}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Qty:</span> <strong>${o.qty || 1} pcs</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Harga Item / Pcs:</span> <strong>Rp ${Number(o.hargaProduk || 0).toLocaleString('id-ID')}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Fee Jastip / pcs:</span> <strong>Rp ${Number(o.feeJastip || 0).toLocaleString('id-ID')}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Harga Jual / pcs:</span> <strong>Rp ${Number(o.hargaJual || 0).toLocaleString('id-ID')}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Status Payment:</span> <span class="${getPaymentBadgeClass(payStatus)}">${payStatus}</span></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Fulfillment:</span> <span class="${getLogisticsBadgeClass(logStatus)}">${logStatus}</span></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Order Tracking:</span> <span class="${getLogisticsBadgeClass(logStatus)}">${logStatus}</span></li>
         <li class="list-group-item d-flex justify-content-between p-2 bg-light"><span>Total Tagihan:</span> <strong class="text-primary fs-6">Rp ${Number(o.totalTagihan || 0).toLocaleString('id-ID')}</strong></li>
       </ul>
     `;
@@ -1126,6 +1156,7 @@
     const curLokasi = (o.lokasiToko && !o.lokasiToko.includes('Sabtu') && o.lokasiToko !== '-') ? o.lokasiToko : '';
     const payStatus = normalizePaymentStatus(o.statusOrder);
     const logStatus = normalizeLogisticsStatus(o.statusFulfillment || o.statusOrder, payStatus);
+    const curDayaTahan = o.dayaTahan || "Lihat Expired Date Pada Item";
 
     const editBody = document.getElementById('editModalBody');
     editBody.innerHTML = `
@@ -1200,13 +1231,15 @@
           <div class="col-6">
             <label class="form-label small fw-semibold mb-1">Status Payment (Accounting)</label>
             <select class="form-select form-select-sm" id="editStatusPay">
+              <option value="Full Payment" ${payStatus === 'Full Payment' ? 'selected' : ''}>Full Payment (Lunas)</option>
+              <option value="Order Only" ${payStatus === 'Order Only' ? 'selected' : ''}>Order Only (Fee Belum)</option>
+              <option value="Fee Only" ${payStatus === 'Fee Only' ? 'selected' : ''}>Fee Only</option>
               <option value="Unpaid" ${payStatus === 'Unpaid' ? 'selected' : ''}>Unpaid</option>
-              <option value="Paid" ${payStatus === 'Paid' ? 'selected' : ''}>Paid</option>
               <option value="Refunded" ${payStatus === 'Refunded' ? 'selected' : ''}>Refunded</option>
             </select>
           </div>
           <div class="col-6">
-            <label class="form-label small fw-semibold mb-1">Status Fulfillment (Logistik)</label>
+            <label class="form-label small fw-semibold mb-1">Order Tracking (Logistik)</label>
             <select class="form-select form-select-sm" id="editStatusLog">
               <option value="Order Placed" ${logStatus === 'Order Placed' ? 'selected' : ''}>Order Placed</option>
               <option value="Purchased" ${logStatus === 'Purchased' ? 'selected' : ''}>Purchased</option>
@@ -1218,11 +1251,11 @@
         </div>
         ${isSuper ? `
         <div class="mb-2">
-          <label class="form-label small fw-semibold mb-1 text-danger">Daya Tahan (Hari) ★</label>
-          <input type="number" class="form-control form-control-sm" id="editDayaTahan" value="${o.dayaTahan || 4}" min="1" required>
+          <label class="form-label small fw-semibold mb-1 text-danger">Daya Tahan / Expired ★ Superadmin</label>
+          <input type="text" class="form-control form-control-sm" id="editDayaTahan" value="${curDayaTahan}" required placeholder="Lihat Expired Date Pada Item">
         </div>
         ` : `
-        <input type="hidden" id="editDayaTahan" value="${o.dayaTahan || 4}">
+        <input type="hidden" id="editDayaTahan" value="${curDayaTahan}">
         `}
         <div class="p-2 bg-light border rounded mt-2">
           <div class="d-flex justify-content-between small">
@@ -1352,6 +1385,10 @@
     let totalFee = 0;
     let totalTagihanSemua = 0;
 
+    let sumFullPay = 0;
+    let sumOrderOnlyVal = 0;
+    let sumOutstandingFeeVal = 0;
+
     const filtered = orders.filter(o => {
       const nama = String(o.namaCustomer || '').toLowerCase();
       const alamat = String(o.alamatCod || '').toLowerCase();
@@ -1381,14 +1418,31 @@
 
     filtered.forEach(o => {
       const q = Number(o.qty) || 1;
-      totalModal += (Number(o.hargaProduk) || 0) * q;
-      totalFee += (Number(o.feeJastip) || 0) * q;
-      totalTagihanSemua += (Number(o.totalTagihan) || 0);
+      const modalItem = (Number(o.hargaProduk) || 0) * q;
+      const feeItem = (Number(o.feeJastip) || 0) * q;
+      const tagihanItem = Number(o.totalTagihan) || (modalItem + feeItem);
+
+      totalModal += modalItem;
+      totalFee += feeItem;
+      totalTagihanSemua += tagihanItem;
+
+      const pStatus = normalizePaymentStatus(o.statusOrder);
+      if (pStatus === 'Full Payment') {
+        sumFullPay += tagihanItem;
+      } else if (pStatus === 'Order Only') {
+        sumOrderOnlyVal += modalItem;
+        sumOutstandingFeeVal += feeItem;
+      } else if (pStatus === 'Unpaid') {
+        sumOutstandingFeeVal += feeItem;
+      }
     });
 
     document.getElementById('sumModal').innerText = 'Rp ' + totalModal.toLocaleString('id-ID');
     document.getElementById('sumFee').innerText = 'Rp ' + totalFee.toLocaleString('id-ID');
     document.getElementById('sumTagihan').innerText = 'Rp ' + totalTagihanSemua.toLocaleString('id-ID');
+    document.getElementById('sumFullPayment').innerText = 'Rp ' + sumFullPay.toLocaleString('id-ID');
+    document.getElementById('sumOrderOnly').innerText = 'Rp ' + sumOrderOnlyVal.toLocaleString('id-ID');
+    document.getElementById('sumOutstandingFee').innerText = 'Rp ' + sumOutstandingFeeVal.toLocaleString('id-ID');
     document.getElementById('totalOrderBadge').innerText = `Total: ${filtered.length}`;
 
     if (filtered.length === 0) {
@@ -1448,7 +1502,7 @@
       showCustomAlert('Pemberitahuan', 'Belum ada data pesanan untuk diunduh.', 'ℹ️');
       return;
     }
-    const headers = ["No", "Timestamp", "Nama Customer", "Alamat Customer", "Toko Pesanan", "Lokasi Toko", "Pesanan Ready", "Varian Rasa", "Daya Tahan", "Tanggal Order", "Qty", "Harga Item", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Payment", "Status Fulfillment"];
+    const headers = ["No", "Timestamp", "Nama Customer", "Alamat Customer", "Toko Pesanan", "Lokasi Toko", "Pesanan Ready", "Varian Rasa", "Daya Tahan", "Tanggal Order", "Qty", "Harga Item", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Payment", "Order Tracking"];
     const rows = orders.map((o, idx) => {
       const payStatus = normalizePaymentStatus(o.statusOrder);
       const logStatus = normalizeLogisticsStatus(o.statusFulfillment || o.statusOrder, payStatus);
@@ -1461,7 +1515,7 @@
         `"${(o.lokasiToko && !o.lokasiToko.includes('Sabtu') && o.lokasiToko !== '-') ? o.lokasiToko : '-'}"`,
         `"${getCleanReadyText(o.lokasiToko, o.batchJastip)}"`,
         `"${o.varianProduk || ''}"`,
-        `"${o.dayaTahan || ''}"`,
+        `"${o.dayaTahan || 'Lihat Expired Date Pada Item'}"`,
         `"${calculateReadyDate(o.batchJastip).formattedFull || formatCleanDate(o.batchJastip)}"`,
         o.qty,
         o.hargaProduk,
