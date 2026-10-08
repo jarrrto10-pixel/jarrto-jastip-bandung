@@ -78,7 +78,11 @@
           </div>
           <div class="mb-2">
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
-            <input type="text" class="form-control" id="varianProduk" required placeholder="Varian Rasa" value="Varian Rasa">
+            <!-- Klik atau fokus langsung memilih teks tanpa perlu hapus manual -->
+            <input type="text" class="form-control" id="varianProduk" required placeholder="Varian Rasa" value="Varian Rasa" 
+                   onclick="this.select()" 
+                   onfocus="if(this.value==='Varian Rasa') this.value='';" 
+                   onblur="if(!this.value.trim()) this.value='Varian Rasa';">
           </div>
           <div class="row g-2 mb-2">
             <div class="col-6">
@@ -196,7 +200,7 @@
   </div>
 </div>
 
-<!-- MODAL NOTIFIKASI UMUM (PENGGANTI ALERT) -->
+<!-- MODAL NOTIFIKASI UMUM (AUTO-DISMISS DALAM BEBERAPA DETIK) -->
 <div class="modal fade" id="customAlertModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content text-center p-3">
@@ -390,6 +394,7 @@
   let orders = [];
   let currentEditOrder = null;
   let orderToDeleteRowIndex = null;
+  let alertTimer = null;
 
   const loginModalEl = new bootstrap.Modal(document.getElementById('loginModal'));
   const previewModalEl = new bootstrap.Modal(document.getElementById('previewModal'));
@@ -399,11 +404,20 @@
   const editAdminModalEl = new bootstrap.Modal(document.getElementById('editAdminModal'));
   const customAlertModalEl = new bootstrap.Modal(document.getElementById('customAlertModal'));
 
-  function showCustomAlert(title, message, icon = '✅') {
+  // Otomatis menutup notifikasi modal setelah 1.5 detik
+  function showCustomAlert(title, message, icon = '✅', duration = 1500) {
+    if (alertTimer) clearTimeout(alertTimer);
+
     document.getElementById('customAlertIcon').innerText = icon;
     document.getElementById('customAlertTitle').innerText = title;
     document.getElementById('customAlertMessage').innerText = message;
     customAlertModalEl.show();
+
+    if (duration > 0) {
+      alertTimer = setTimeout(() => {
+        customAlertModalEl.hide();
+      }, duration);
+    }
   }
 
   function fetchAdminsFromCloud(callback) {
@@ -839,7 +853,7 @@
         <div class="row g-2 mb-2">
           <div class="col-6">
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
-            <input type="text" class="form-control form-control-sm" id="editVarian" value="${o.varianProduk || ''}" required>
+            <input type="text" class="form-control form-control-sm" id="editVarian" value="${o.varianProduk || ''}" required onclick="this.select()">
           </div>
           <div class="col-6">
             <label class="form-label small fw-semibold mb-1">Tanggal Jastip</label>
