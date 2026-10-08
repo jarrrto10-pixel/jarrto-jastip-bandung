@@ -42,7 +42,6 @@
       </div>
       <div>
         <h4 class="fw-bold mb-0 text-primary" id="appTitle" style="cursor: pointer;" title="Jastipinyuk Bandung">Jastipinyuk Bandung</h4>
-        <!-- Sub-judul disembunyikan saat mode customer, hanya tampil saat admin login -->
         <p class="text-muted small mb-0 d-none" id="appSubtitle" style="font-size: 0.75rem;">Pencatatan Pesanan & Monitoring <span id="adminBadge" class="badge bg-dark ms-1 d-none"></span></p>
       </div>
     </div>
@@ -67,9 +66,9 @@
             <input type="text" class="form-control" id="namaCustomer" required placeholder="Nama pemesan" oninput="checkSecretTrigger(this)">
           </div>
           <div class="mb-2">
-            <!-- Label dan Placeholder Alamat diubah menjadi Alamat -->
-            <label class="form-label small fw-semibold mb-1">Alamat</label>
-            <input type="text" class="form-control" id="alamatCod" required placeholder="Alamat">
+            <!-- Label dan Placeholder Alamat Customer -->
+            <label class="form-label small fw-semibold mb-1">Alamat Customer</label>
+            <input type="text" class="form-control" id="alamatCod" required placeholder="Alamat Customer">
           </div>
           <div class="row g-2 mb-2">
             <div class="col-12">
@@ -150,7 +149,7 @@
       </div>
     </div>
 
-    <!-- TABEL MONITORING (MODE ADMIN) -->
+    <!-- TABEL MONITORING (MODE ADMIN & SUPERADMIN) -->
     <div id="adminPanel" class="col-12 d-none">
       <div class="card-custom p-3">
         <!-- RINGKASAN PENDAPATAN (HANYA SUPERADMIN) -->
@@ -177,7 +176,7 @@
 
         <div class="row g-2 mb-2 align-items-center">
           <div class="col-md-6">
-            <input type="text" id="searchFilter" class="form-control" placeholder="🔍 Cari customer, alamat, toko, ready..." oninput="renderTable()">
+            <input type="text" id="searchFilter" class="form-control" placeholder="🔍 Cari customer, alamat, toko, lokasi..." oninput="renderTable()">
           </div>
           <div class="col-md-4">
             <select id="filterStatus" class="form-select" onchange="renderTable()">
@@ -201,9 +200,11 @@
               <tr class="text-muted text-uppercase">
                 <th style="width: 45px;" class="text-center">NO</th>
                 <th>CUSTOMER</th>
-                <th>ALAMAT</th>
+                <th>ALAMAT CUSTOMER</th>
                 <th>TOKO</th>
+                <th>LOKASI TOKO</th>
                 <th>VARIAN RASA</th>
+                <th>TANGGAL ORDER</th>
                 <th>PESANAN READY</th>
                 <th>QTY</th>
                 <th>TAGIHAN</th>
@@ -212,7 +213,7 @@
               </tr>
             </thead>
             <tbody id="tableBody">
-              <tr><td colspan="10" class="text-center py-3 text-muted">Memuat data dari Google Sheets...</td></tr>
+              <tr><td colspan="12" class="text-center py-3 text-muted">Memuat data dari Google Sheets...</td></tr>
             </tbody>
           </table>
         </div>
@@ -325,7 +326,7 @@
   </div>
 </div>
 
-<!-- MODAL EDIT AKUN (ROLE & PASSCODE) -->
+<!-- MODAL EDIT AKUN -->
 <div class="modal fade" id="editAdminModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content">
@@ -440,21 +441,31 @@
     }
   }
 
+  // Menghitung hari & tanggal Sabtu berikutnya secara otomatis
   function calculateReadyDate(dateStr) {
-    if (!dateStr) return { iso: '', formatted: '', hariNama: '' };
-    const parts = dateStr.split('-');
-    const dt = new Date(parts[0], parts[1] - 1, parts[2]);
-    const day = dt.getDay();
+    if (!dateStr) return { iso: '', formatted: '', hariNama: '', formattedFull: '' };
+    let clean = dateStr;
+    if (typeof clean === 'string' && clean.includes('T')) {
+      clean = clean.split('T')[0];
+    }
+    const parts = clean.split('-');
+    if (parts.length < 3) return { iso: '', formatted: '', hariNama: '', formattedFull: '' };
+
+    const dt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const day = dt.getDay(); // 0: Min, 1: Sen, ..., 5: Jum, 6: Sab
 
     const namaHariList = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
     const hariNama = namaHariList[day];
 
     let targetDate = new Date(dt);
     if (day >= 1 && day <= 5) {
+      // Senin-Jumat ikut Sabtu minggu ini
       targetDate.setDate(dt.getDate() + (6 - day));
     } else if (day === 6) {
+      // Sabtu ikut Sabtu minggu depan
       targetDate.setDate(dt.getDate() + 7);
     } else if (day === 0) {
+      // Minggu ikut Sabtu minggu depan
       targetDate.setDate(dt.getDate() + 6);
     }
 
@@ -465,8 +476,17 @@
 
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const formatted = targetDate.toLocaleDateString('id-ID', options);
+    const formattedFull = dt.toLocaleDateString('id-ID', options);
 
-    return { iso, formatted, hariNama };
+    return { iso, formatted, hariNama, formattedFull };
+  }
+
+  // Format rapi untuk menampilkan Pesanan Ready di tabel
+  function getCleanReadyText(rawVal, orderDateStr) {
+    if (rawVal && typeof rawVal === 'string' && rawVal.includes(',') && !rawVal.includes('T')) {
+      return rawVal;
+    }
+    return calculateReadyDate(orderDateStr).formatted || '-';
   }
 
   function updateReadyDate() {
@@ -858,7 +878,7 @@
   function fetchOrders() {
     if (!currentLoggedInAdmin) return;
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = `<tr><td colspan="10" class="text-center py-3 text-muted">⏳ Mengambil data...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="text-center py-3 text-muted">⏳ Mengambil data...</td></tr>`;
 
     fetch(SCRIPT_URL)
       .then(res => res.json())
@@ -867,12 +887,12 @@
           orders = data;
           renderTable();
         } else {
-          tbody.innerHTML = `<tr><td colspan="10" class="text-center py-3 text-danger">Format data tidak valid.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="12" class="text-center py-3 text-danger">Format data tidak valid.</td></tr>`;
         }
       })
       .catch(err => {
         console.error(err);
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-3 text-danger">Gagal memuat data spreadsheet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-3 text-danger">Gagal memuat data spreadsheet.</td></tr>`;
       });
   }
 
@@ -913,7 +933,7 @@
       namaCustomer: document.getElementById('namaCustomer').value,
       alamatCod: document.getElementById('alamatCod').value,
       tokoPesanan: brand,
-      lokasiToko: document.getElementById('pesananReady').value || "-",
+      lokasiToko: "-", // Lokasi Toko awal default strip, dapat diisi oleh admin
       varianProduk: varian,
       batchJastip: document.getElementById('tanggalOrder').value,
       dayaTahan: "4",
@@ -959,17 +979,18 @@
     const o = orders[idx];
     if (!o) return;
 
-    const readyText = o.lokasiToko && o.lokasiToko !== '-' ? o.lokasiToko : calculateReadyDate(o.batchJastip).formatted;
-    const hariOrder = calculateReadyDate(o.batchJastip).hariNama;
+    const readyText = getCleanReadyText(o.lokasiToko, o.batchJastip);
+    const orderDateRes = calculateReadyDate(o.batchJastip);
 
     const modalContent = document.getElementById('modalContent');
     modalContent.innerHTML = `
       <ul class="list-group list-group-flush mb-0" style="font-size: 0.78rem;">
         <li class="list-group-item d-flex justify-content-between p-2"><span>Customer:</span> <strong>${o.namaCustomer || '-'}</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Alamat:</span> <strong>${o.alamatCod || '-'}</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Alamat Customer:</span> <strong>${o.alamatCod || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Toko:</span> <strong>${o.tokoPesanan || '-'}</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Lokasi Toko:</span> <strong>${o.lokasiToko && !o.lokasiToko.includes('Sabtu') ? o.lokasiToko : '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Varian Rasa:</span> <strong class="text-primary">${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Original'}</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Tanggal Order:</span> <strong>${hariOrder ? hariOrder + ', ' : ''}${formatCleanDate(o.batchJastip)}</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Tanggal Order:</span> <strong>${orderDateRes.formattedFull || formatCleanDate(o.batchJastip)}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2 bg-warning-subtle text-dark"><span>Pesanan Ready:</span> <strong class="text-primary">${readyText || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Daya Tahan:</span> <strong>${o.dayaTahan || '-'} Hari</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Qty:</span> <strong>${o.qty || 1} pcs</strong></li>
@@ -1052,9 +1073,10 @@
     const curQty = Number(o.qty) || 1;
     const curFee = getFeePerPcs(curBrand, curQty);
     const isSuper = currentLoggedInAdmin && currentLoggedInAdmin.role === 'superadmin';
-    const defaultReady = o.lokasiToko && o.lokasiToko !== '-' ? o.lokasiToko : calculateReadyDate(o.batchJastip).formatted;
+    const defaultReady = getCleanReadyText(null, o.batchJastip);
     const isTiramisusu = curBrand === 'Tiramisusu';
     const currentPrice = Number(o.hargaProduk) || 0;
+    const curLokasi = (o.lokasiToko && !o.lokasiToko.includes('Sabtu') && o.lokasiToko !== '-') ? o.lokasiToko : '';
 
     const editBody = document.getElementById('editModalBody');
     editBody.innerHTML = `
@@ -1065,12 +1087,12 @@
             <input type="text" class="form-control form-control-sm" id="editCustomer" value="${o.namaCustomer || ''}" required>
           </div>
           <div class="col-6">
-            <label class="form-label small fw-semibold mb-1">Alamat</label>
-            <input type="text" class="form-control form-control-sm" id="editCod" value="${o.alamatCod || ''}" required placeholder="Alamat">
+            <label class="form-label small fw-semibold mb-1">Alamat Customer</label>
+            <input type="text" class="form-control form-control-sm" id="editCod" value="${o.alamatCod || ''}" required placeholder="Alamat Customer">
           </div>
         </div>
         <div class="row g-2 mb-2">
-          <div class="col-12">
+          <div class="col-6">
             <label class="form-label small fw-semibold mb-1">Toko Pesanan</label>
             <select class="form-select form-select-sm" id="editToko" required onchange="handleEditTokoChange()">
               <option value="Tiramisusu" ${curBrand === 'Tiramisusu' ? 'selected' : ''}>Tiramisusu</option>
@@ -1079,6 +1101,10 @@
               <option value="Goela Semoet" ${curBrand === 'Goela Semoet' ? 'selected' : ''}>Goela Semoet</option>
               <option value="Roti Segar" ${curBrand === 'Roti Segar' ? 'selected' : ''}>Roti Segar</option>
             </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold mb-1">Lokasi Toko</label>
+            <input type="text" class="form-control form-control-sm" id="editLokasiToko" value="${curLokasi}" placeholder="Cabang / Outlet">
           </div>
         </div>
         <div class="row g-2 mb-2">
@@ -1180,7 +1206,7 @@
     payload.append('namaCustomer', document.getElementById('editCustomer').value);
     payload.append('alamatCod', document.getElementById('editCod').value);
     payload.append('tokoPesanan', brand);
-    payload.append('lokasiToko', document.getElementById('editReady').value || "-");
+    payload.append('lokasiToko', document.getElementById('editLokasiToko').value || "-");
     payload.append('varianProduk', varian);
     payload.append('batchJastip', document.getElementById('editTanggalOrder').value);
     payload.append('dayaTahan', document.getElementById('editDayaTahan').value);
@@ -1270,18 +1296,18 @@
 
     const filtered = orders.filter(o => {
       const nama = String(o.namaCustomer || '').toLowerCase();
-      const cod = String(o.alamatCod || '').toLowerCase();
+      const alamat = String(o.alamatCod || '').toLowerCase();
       const toko = String(o.tokoPesanan || '').toLowerCase();
-      const ready = String(o.lokasiToko || '').toLowerCase();
+      const lokasi = String(o.lokasiToko || '').toLowerCase();
       const varian = String(o.varianProduk || '').toLowerCase();
       const tgl = String(o.batchJastip || '').toLowerCase();
       const status = String(o.statusOrder || 'Pending').trim();
 
       const matchSearch = !search || 
                           nama.includes(search) || 
-                          cod.includes(search) || 
+                          alamat.includes(search) || 
                           toko.includes(search) || 
-                          ready.includes(search) || 
+                          lokasi.includes(search) || 
                           varian.includes(search) ||
                           tgl.includes(search);
 
@@ -1303,25 +1329,30 @@
     document.getElementById('totalOrderBadge').innerText = `Total: ${filtered.length}`;
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" class="text-center py-3 text-muted">Belum ada pesanan yang sesuai.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="12" class="text-center py-3 text-muted">Belum ada pesanan yang sesuai.</td></tr>`;
       return;
     }
 
     const isSuperAdmin = currentLoggedInAdmin && currentLoggedInAdmin.role === 'superadmin';
 
     filtered.forEach((o, index) => {
-      const readyVal = o.lokasiToko && o.lokasiToko !== '-' ? o.lokasiToko : calculateReadyDate(o.batchJastip).formatted;
+      const readyVal = getCleanReadyText(o.lokasiToko, o.batchJastip);
+      const orderDateInfo = calculateReadyDate(o.batchJastip);
+      const lokasiTokoVal = (o.lokasiToko && !o.lokasiToko.includes('Sabtu') && o.lokasiToko !== '-') ? o.lokasiToko : '-';
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="text-center text-muted fw-semibold">${index + 1}</td>
         <td><div class="fw-bold">${o.namaCustomer || '-'}</div></td>
         <td><span class="text-muted small">📍 ${o.alamatCod || '-'}</span></td>
         <td><div class="fw-semibold">${o.tokoPesanan || '-'}</div></td>
+        <td><span class="badge bg-secondary-subtle text-secondary border px-2 py-1">${lokasiTokoVal}</span></td>
         <td>
           <span class="badge bg-primary-subtle text-primary border px-2 py-1">
             ${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Original'}
           </span>
         </td>
+        <td><span class="small fw-semibold">${orderDateInfo.formattedFull || formatCleanDate(o.batchJastip)}</span></td>
         <td>
           <span class="badge bg-light text-dark border px-2 py-1">
             🗓️ ${readyVal || '-'}
@@ -1349,17 +1380,18 @@
       showCustomAlert('Pemberitahuan', 'Belum ada data pesanan untuk diunduh.', 'ℹ️');
       return;
     }
-    const headers = ["No", "Timestamp", "Nama Customer", "Alamat", "Toko Pesanan", "Pesanan Ready", "Varian Rasa", "Daya Tahan", "Tanggal Order", "Qty", "Harga Item", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Order"];
+    const headers = ["No", "Timestamp", "Nama Customer", "Alamat Customer", "Toko Pesanan", "Lokasi Toko", "Pesanan Ready", "Varian Rasa", "Daya Tahan", "Tanggal Order", "Qty", "Harga Item", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Order"];
     const rows = orders.map((o, idx) => [
       idx + 1,
       `"${o.timestamp || ''}"`,
       `"${o.namaCustomer || ''}"`,
       `"${o.alamatCod || ''}"`,
       `"${o.tokoPesanan || ''}"`,
-      `"${o.lokasiToko || calculateReadyDate(o.batchJastip).formatted}"`,
+      `"${(o.lokasiToko && !o.lokasiToko.includes('Sabtu') && o.lokasiToko !== '-') ? o.lokasiToko : '-'}"`,
+      `"${getCleanReadyText(o.lokasiToko, o.batchJastip)}"`,
       `"${o.varianProduk || ''}"`,
       `"${o.dayaTahan || ''}"`,
-      `"${formatCleanDate(o.batchJastip)}"`,
+      `"${calculateReadyDate(o.batchJastip).formattedFull || formatCleanDate(o.batchJastip)}"`,
       o.qty,
       o.hargaProduk,
       o.feeJastip,
