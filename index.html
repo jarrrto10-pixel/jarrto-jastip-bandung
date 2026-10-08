@@ -36,7 +36,7 @@
     .status-log-Delivered { background-color: #1e293b; color: #f8fafc; border: 1px solid #0f172a; }
     .status-log-Cancelled { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
-    .summary-card { border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; padding: 8px 12px; }
+    .summary-card { border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; padding: 10px 12px; }
   </style>
 </head>
 <body class="py-3">
@@ -158,46 +158,48 @@
     <!-- TABEL MONITORING (MODE ADMIN & SUPERADMIN) -->
     <div id="adminPanel" class="col-12 d-none">
       <div class="card-custom p-3">
-        <!-- RINGKASAN PENDAPATAN & DETAIL STATUS PAYMENT (HANYA SUPERADMIN) -->
+        <!-- RINGKASAN FINANSIAL TERSTRUKTUR (KHUSUS SUPERADMIN) -->
         <div id="summaryFinanceRow" class="mb-3">
-          <div class="row g-2 mb-2">
-            <div class="col-md-4">
-              <div class="summary-card text-center">
-                <span class="text-muted d-block" style="font-size: 0.68rem;">Total Modal Asli (Order)</span>
-                <strong class="text-secondary" id="sumModal">Rp 0</strong>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="summary-card text-center bg-success-subtle border-success-subtle">
-                <span class="text-success-emphasis d-block" style="font-size: 0.68rem;">Total Fee Jastip (Laba)</span>
-                <strong class="text-success" id="sumFee">Rp 0</strong>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="summary-card text-center bg-primary-subtle border-primary-subtle">
-                <span class="text-primary-emphasis d-block" style="font-size: 0.68rem;">Total Tagihan Keseluruhan</span>
-                <strong class="text-primary" id="sumTagihan">Rp 0</strong>
-              </div>
-            </div>
-          </div>
-
           <div class="row g-2">
+            <!-- Kolom 1: Full Payment & Payment Order Only -->
             <div class="col-md-4">
-              <div class="summary-card text-center border-success bg-white">
-                <span class="text-success fw-bold d-block" style="font-size: 0.68rem;">✅ Full Payment Terkumpul</span>
-                <strong class="text-success" id="sumFullPayment">Rp 0</strong>
+              <div class="summary-card mb-2 border-success-subtle bg-success-subtle">
+                <span class="text-success-emphasis fw-semibold d-block" style="font-size: 0.72rem;">✅ Total Full Payment</span>
+                <strong class="text-success fs-6" id="sumFullPayment">Rp 0</strong>
+                <small class="text-muted d-block" style="font-size: 0.65rem;">Harga item + fee lunas penuh</small>
+              </div>
+              <div class="summary-card border-warning-subtle bg-warning-subtle">
+                <span class="text-warning-emphasis fw-semibold d-block" style="font-size: 0.72rem;">⚠️ Total Payment Order Only</span>
+                <strong class="text-dark fs-6" id="sumOrderOnly">Rp 0</strong>
+                <small class="text-muted d-block" style="font-size: 0.65rem;">Hanya bayar modal item saja</small>
               </div>
             </div>
+
+            <!-- Kolom 2: Fee Lunas & Fee Belum Lunas -->
             <div class="col-md-4">
-              <div class="summary-card text-center border-warning bg-white">
-                <span class="text-warning-emphasis fw-bold d-block" style="font-size: 0.68rem;">⚠️ Order Only (Tertagih Modal Saja)</span>
-                <strong class="text-warning-emphasis" id="sumOrderOnly">Rp 0</strong>
+              <div class="summary-card mb-2 border-primary-subtle bg-primary-subtle">
+                <span class="text-primary-emphasis fw-semibold d-block" style="font-size: 0.72rem;">💵 Total Fee Lunas</span>
+                <strong class="text-primary fs-6" id="sumFeeLunas">Rp 0</strong>
+                <small class="text-muted d-block" style="font-size: 0.65rem;">Fee jastip yang sudah diterima</small>
+              </div>
+              <div class="summary-card border-danger-subtle bg-danger-subtle">
+                <span class="text-danger-emphasis fw-semibold d-block" style="font-size: 0.72rem;">⏳ Total Fee Belum Lunas</span>
+                <strong class="text-danger fs-6" id="sumFeeBelumLunas">Rp 0</strong>
+                <small class="text-muted d-block" style="font-size: 0.65rem;">Fee tertunggak (Order Only & Unpaid)</small>
               </div>
             </div>
+
+            <!-- Kolom 3: Pendapatan Terkumpul & Fee Keseluruhan -->
             <div class="col-md-4">
-              <div class="summary-card text-center border-danger bg-white">
-                <span class="text-danger fw-bold d-block" style="font-size: 0.68rem;">⏳ Fee Belum Lunas (Outstanding Fee)</span>
-                <strong class="text-danger" id="sumOutstandingFee">Rp 0</strong>
+              <div class="summary-card mb-2 border-dark-subtle bg-white">
+                <span class="text-dark fw-semibold d-block" style="font-size: 0.72rem;">🏦 Total Pendapatan Terkumpul</span>
+                <strong class="text-dark fs-6" id="sumPendapatanTerkumpul">Rp 0</strong>
+                <small class="text-muted d-block" style="font-size: 0.65rem;">Uang masuk (Full Payment + Order Only)</small>
+              </div>
+              <div class="summary-card border-info-subtle bg-info-subtle">
+                <span class="text-info-emphasis fw-semibold d-block" style="font-size: 0.72rem;">📈 Total Fee Keseluruhan</span>
+                <strong class="text-info-emphasis fs-6" id="sumFeeKeseluruhan">Rp 0</strong>
+                <small class="text-muted d-block" style="font-size: 0.65rem;">Target potensi laba seluruh pesanan</small>
               </div>
             </div>
           </div>
@@ -1009,7 +1011,7 @@
       lokasiToko: "-",
       varianProduk: varian,
       batchJastip: document.getElementById('tanggalOrder').value,
-      dayaTahan: "Lihat Expired Date Pada Item", // Default otomatis untuk customer
+      dayaTahan: "Lihat Expired Date Pada Item",
       qty: qty,
       hargaProduk: harga,
       feeJastip: feePerPcs,
@@ -1381,13 +1383,11 @@
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
 
-    let totalModal = 0;
-    let totalFee = 0;
-    let totalTagihanSemua = 0;
-
     let sumFullPay = 0;
     let sumOrderOnlyVal = 0;
-    let sumOutstandingFeeVal = 0;
+    let sumFeeLunasVal = 0;
+    let sumFeeBelumLunasVal = 0;
+    let sumTotalFeeKeseluruhan = 0;
 
     const filtered = orders.filter(o => {
       const nama = String(o.namaCustomer || '').toLowerCase();
@@ -1420,29 +1420,34 @@
       const q = Number(o.qty) || 1;
       const modalItem = (Number(o.hargaProduk) || 0) * q;
       const feeItem = (Number(o.feeJastip) || 0) * q;
-      const tagihanItem = Number(o.totalTagihan) || (modalItem + feeItem);
-
-      totalModal += modalItem;
-      totalFee += feeItem;
-      totalTagihanSemua += tagihanItem;
-
+      const totalItem = (Number(o.totalTagihan) || (modalItem + feeItem));
       const pStatus = normalizePaymentStatus(o.statusOrder);
+
+      // Hitung total fee keseluruhan dari semua order
+      sumTotalFeeKeseluruhan += feeItem;
+
       if (pStatus === 'Full Payment') {
-        sumFullPay += tagihanItem;
+        sumFullPay += totalItem;        // Total Full Payment = (Item + Fee) * Qty
+        sumFeeLunasVal += feeItem;      // Fee sudah lunas
       } else if (pStatus === 'Order Only') {
-        sumOrderOnlyVal += modalItem;
-        sumOutstandingFeeVal += feeItem;
+        sumOrderOnlyVal += modalItem;    // Total Payment Order Only = Harga Item * Qty
+        sumFeeBelumLunasVal += feeItem;  // Fee tertunggak dari Order Only
+      } else if (pStatus === 'Fee Only') {
+        sumFeeLunasVal += feeItem;       // Fee sudah dibayar
       } else if (pStatus === 'Unpaid') {
-        sumOutstandingFeeVal += feeItem;
+        sumFeeBelumLunasVal += feeItem;  // Fee belum dibayar sama sekali
       }
     });
 
-    document.getElementById('sumModal').innerText = 'Rp ' + totalModal.toLocaleString('id-ID');
-    document.getElementById('sumFee').innerText = 'Rp ' + totalFee.toLocaleString('id-ID');
-    document.getElementById('sumTagihan').innerText = 'Rp ' + totalTagihanSemua.toLocaleString('id-ID');
+    // Total pendapatan terkumpul = uang riil masuk (Full Payment + Order Only)
+    const sumPendapatanTerkumpulVal = sumFullPay + sumOrderOnlyVal;
+
     document.getElementById('sumFullPayment').innerText = 'Rp ' + sumFullPay.toLocaleString('id-ID');
     document.getElementById('sumOrderOnly').innerText = 'Rp ' + sumOrderOnlyVal.toLocaleString('id-ID');
-    document.getElementById('sumOutstandingFee').innerText = 'Rp ' + sumOutstandingFeeVal.toLocaleString('id-ID');
+    document.getElementById('sumFeeLunas').innerText = 'Rp ' + sumFeeLunasVal.toLocaleString('id-ID');
+    document.getElementById('sumFeeBelumLunas').innerText = 'Rp ' + sumFeeBelumLunasVal.toLocaleString('id-ID');
+    document.getElementById('sumPendapatanTerkumpul').innerText = 'Rp ' + sumPendapatanTerkumpulVal.toLocaleString('id-ID');
+    document.getElementById('sumFeeKeseluruhan').innerText = 'Rp ' + sumTotalFeeKeseluruhan.toLocaleString('id-ID');
     document.getElementById('totalOrderBadge').innerText = `Total: ${filtered.length}`;
 
     if (filtered.length === 0) {
