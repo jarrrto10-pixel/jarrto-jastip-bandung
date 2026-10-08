@@ -42,7 +42,8 @@
       </div>
       <div>
         <h4 class="fw-bold mb-0 text-primary" id="appTitle" style="cursor: pointer;" title="Jastipinyuk Bandung">Jastipinyuk Bandung</h4>
-        <p class="text-muted small mb-0" style="font-size: 0.75rem;">Pencatatan Pesanan & Monitoring <span id="adminBadge" class="badge bg-dark ms-1 d-none"></span></p>
+        <!-- Sub-judul disembunyikan saat mode customer, hanya tampil saat admin login -->
+        <p class="text-muted small mb-0 d-none" id="appSubtitle" style="font-size: 0.75rem;">Pencatatan Pesanan & Monitoring <span id="adminBadge" class="badge bg-dark ms-1 d-none"></span></p>
       </div>
     </div>
     <!-- Kontrol Admin -->
@@ -66,8 +67,9 @@
             <input type="text" class="form-control" id="namaCustomer" required placeholder="Nama pemesan" oninput="checkSecretTrigger(this)">
           </div>
           <div class="mb-2">
-            <label class="form-label small fw-semibold mb-1">Alamat COD</label>
-            <input type="text" class="form-control" id="alamatCod" required placeholder="Titik COD">
+            <!-- Label dan Placeholder Alamat diubah menjadi Alamat -->
+            <label class="form-label small fw-semibold mb-1">Alamat</label>
+            <input type="text" class="form-control" id="alamatCod" required placeholder="Alamat">
           </div>
           <div class="row g-2 mb-2">
             <div class="col-12">
@@ -82,7 +84,7 @@
             </div>
           </div>
 
-          <!-- CONTAINER VARIAN RASA (HANYA NAMA RASA SAJA TANPA TEKS HARGA) -->
+          <!-- CONTAINER VARIAN RASA -->
           <div class="mb-2" id="varianContainer">
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
             <select class="form-select" id="varianTiramisusuSelect" onchange="handleTiramisusuVarianChange()">
@@ -118,7 +120,6 @@
             </div>
             <div class="col-4">
               <label class="form-label small fw-semibold mb-1">Harga Item / Pcs</label>
-              <!-- Menampilkan awalan Rp dengan nilai otomatis -->
               <input type="text" class="form-control bg-light fw-semibold" id="hargaProdukDisplay" readonly value="Rp 89.000" oninput="handleManualHargaInput(this)">
               <input type="hidden" id="hargaProduk" value="89000">
             </div>
@@ -176,7 +177,7 @@
 
         <div class="row g-2 mb-2 align-items-center">
           <div class="col-md-6">
-            <input type="text" id="searchFilter" class="form-control" placeholder="🔍 Cari customer, COD, toko, ready..." oninput="renderTable()">
+            <input type="text" id="searchFilter" class="form-control" placeholder="🔍 Cari customer, alamat, toko, ready..." oninput="renderTable()">
           </div>
           <div class="col-md-4">
             <select id="filterStatus" class="form-select" onchange="renderTable()">
@@ -200,7 +201,7 @@
               <tr class="text-muted text-uppercase">
                 <th style="width: 45px;" class="text-center">NO</th>
                 <th>CUSTOMER</th>
-                <th>TITIK COD</th>
+                <th>ALAMAT</th>
                 <th>TOKO</th>
                 <th>VARIAN RASA</th>
                 <th>PESANAN READY</th>
@@ -665,6 +666,7 @@
     const controls = document.getElementById('adminControls');
     const panel = document.getElementById('adminPanel');
     const formContainer = document.getElementById('formContainer');
+    const subtitle = document.getElementById('appSubtitle');
     const badge = document.getElementById('adminBadge');
     const summaryRow = document.getElementById('summaryFinanceRow');
     const btnCSV = document.getElementById('btnExportCSV');
@@ -675,6 +677,7 @@
       controls.classList.remove('d-none');
       panel.classList.remove('d-none');
       formContainer.classList.add('d-none');
+      subtitle.classList.remove('d-none');
       badge.classList.remove('d-none');
 
       if (currentLoggedInAdmin.role === 'superadmin') {
@@ -696,6 +699,7 @@
       controls.classList.add('d-none');
       panel.classList.add('d-none');
       formContainer.classList.remove('d-none');
+      subtitle.classList.add('d-none');
       badge.classList.add('d-none');
     }
   }
@@ -962,7 +966,7 @@
     modalContent.innerHTML = `
       <ul class="list-group list-group-flush mb-0" style="font-size: 0.78rem;">
         <li class="list-group-item d-flex justify-content-between p-2"><span>Customer:</span> <strong>${o.namaCustomer || '-'}</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Titik COD:</span> <strong>${o.alamatCod || '-'}</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Alamat:</span> <strong>${o.alamatCod || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Toko:</span> <strong>${o.tokoPesanan || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Varian Rasa:</span> <strong class="text-primary">${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Original'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Tanggal Order:</span> <strong>${hariOrder ? hariOrder + ', ' : ''}${formatCleanDate(o.batchJastip)}</strong></li>
@@ -1061,8 +1065,8 @@
             <input type="text" class="form-control form-control-sm" id="editCustomer" value="${o.namaCustomer || ''}" required>
           </div>
           <div class="col-6">
-            <label class="form-label small fw-semibold mb-1">Titik COD</label>
-            <input type="text" class="form-control form-control-sm" id="editCod" value="${o.alamatCod || ''}" required placeholder="Titik COD">
+            <label class="form-label small fw-semibold mb-1">Alamat</label>
+            <input type="text" class="form-control form-control-sm" id="editCod" value="${o.alamatCod || ''}" required placeholder="Alamat">
           </div>
         </div>
         <div class="row g-2 mb-2">
@@ -1345,7 +1349,7 @@
       showCustomAlert('Pemberitahuan', 'Belum ada data pesanan untuk diunduh.', 'ℹ️');
       return;
     }
-    const headers = ["No", "Timestamp", "Nama Customer", "Titik COD", "Toko Pesanan", "Pesanan Ready", "Varian Rasa", "Daya Tahan", "Tanggal Order", "Qty", "Harga Item", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Order"];
+    const headers = ["No", "Timestamp", "Nama Customer", "Alamat", "Toko Pesanan", "Pesanan Ready", "Varian Rasa", "Daya Tahan", "Tanggal Order", "Qty", "Harga Item", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Order"];
     const rows = orders.map((o, idx) => [
       idx + 1,
       `"${o.timestamp || ''}"`,
