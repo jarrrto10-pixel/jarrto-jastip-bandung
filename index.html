@@ -73,13 +73,12 @@
           <div class="row g-2 mb-2">
             <div class="col-12">
               <label class="form-label small fw-semibold mb-1">Toko Pesanan</label>
-              <input type="text" class="form-control" id="tokoPesanan" required placeholder="Brand / Nama Toko">
+              <input type="text" class="form-control" id="tokoPesanan" required placeholder="Nama Toko">
             </div>
           </div>
           <div class="mb-2">
-            <!-- Label diubah menjadi Varian Rasa dan placeholder default -->
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
-            <input type="text" class="form-control" id="varianProduk" required placeholder="Original / Cokelat / Keju" value="Original">
+            <input type="text" class="form-control" id="varianProduk" required placeholder="Varian Rasa" value="Varian Rasa">
           </div>
           <div class="row g-2 mb-2">
             <div class="col-6">
@@ -772,7 +771,7 @@
       document.getElementById('feeJastip').value = "30000";
       document.getElementById('qty').value = "1";
       document.getElementById('dayaTahan').value = "4";
-      document.getElementById('varianProduk').value = "Original";
+      document.getElementById('varianProduk').value = "Varian Rasa";
       hitungTotal();
     })
     .catch(err => {
@@ -795,7 +794,7 @@
         <li class="list-group-item d-flex justify-content-between p-2"><span>Customer:</span> <strong>${o.namaCustomer || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Alamat COD:</span> <strong>${o.alamatCod || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Toko:</span> <strong>${o.tokoPesanan || '-'} (${o.lokasiToko || '-'})</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Varian Rasa:</span> <strong class="text-primary">${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Original'}</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Varian Rasa:</span> <strong class="text-primary">${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Varian Rasa'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Tanggal Jastip:</span> <strong>${formatCleanDate(o.batchJastip)}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Daya Tahan:</span> <strong>${o.dayaTahan || '-'} Hari</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Qty:</span> <strong>${o.qty || 1} pcs</strong></li>
@@ -910,7 +909,7 @@
     btn.innerText = 'Menyimpan...';
 
     const qty = parseInt(document.getElementById('editQty').value) || 1;
-    const harga = parseInt(document.getElementById('hargaProduk').value) || 0;
+    const harga = parseInt(document.getElementById('editHarga').value) || 0;
     const fee = parseInt(document.getElementById('feeJastip').value) || 30000;
     const hargaJual = harga + fee;
     const total = hargaJual * qty;
@@ -1062,7 +1061,7 @@
         </td>
         <td>
           <span class="badge bg-primary-subtle text-primary border px-2 py-1">
-            ${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Original'}
+            ${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Varian Rasa'}
           </span>
         </td>
         <td><strong>${o.qty || 1}</strong></td>
