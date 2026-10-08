@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jarrrto Jastip Bandung</title>
-  <!-- Ikon Tab Browser (Favicon) -->
+  <title>Jastipinyuk Bandung</title>
   <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
@@ -38,12 +37,12 @@
 <div class="container-fluid px-3 px-md-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
     <div class="d-flex align-items-center gap-2">
-      <!-- Logo Bundar di Sebelah Judul -->
+      <!-- Inisial Bulat -->
       <div style="width: 38px; height: 38px; border-radius: 50%; background: #0d6efd; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1rem;">
-        JT
+        JB
       </div>
       <div>
-        <h4 class="fw-bold mb-0 text-primary" id="appTitle" style="cursor: pointer;" title="Jarrrto Jastip Bandung">Jarrrto Jastip Bandung</h4>
+        <h4 class="fw-bold mb-0 text-primary" id="appTitle" style="cursor: pointer;" title="Jastipinyuk Bandung">Jastipinyuk Bandung</h4>
         <p class="text-muted small mb-0" style="font-size: 0.75rem;">Pencatatan Pesanan & Monitoring <span id="adminBadge" class="badge bg-dark ms-1 d-none"></span></p>
       </div>
     </div>
@@ -74,12 +73,13 @@
           <div class="row g-2 mb-2">
             <div class="col-12">
               <label class="form-label small fw-semibold mb-1">Toko Pesanan</label>
-              <input type="text" class="form-control" id="tokoPesanan" required placeholder="Brand">
+              <input type="text" class="form-control" id="tokoPesanan" required placeholder="Brand / Nama Toko">
             </div>
           </div>
           <div class="mb-2">
-            <label class="form-label small fw-semibold mb-1">Varian / Rasa</label>
-            <input type="text" class="form-control" id="varianProduk" required placeholder="Keju Spesial / Cokelat Pisang">
+            <!-- Label diubah menjadi Varian Rasa dan placeholder default -->
+            <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
+            <input type="text" class="form-control" id="varianProduk" required placeholder="Original / Cokelat / Keju" value="Original">
           </div>
           <div class="row g-2 mb-2">
             <div class="col-6">
@@ -88,13 +88,13 @@
             </div>
             <div class="col-6">
               <label class="form-label small fw-semibold mb-1">Daya Tahan (Hari)</label>
-              <input type="number" class="form-control" id="dayaTahan" min="1" required placeholder="Hari">
+              <input type="number" class="form-control" id="dayaTahan" min="1" required placeholder="Hari" value="4">
             </div>
           </div>
           <div class="row g-2 mb-2">
             <div class="col-4">
               <label class="form-label small fw-semibold mb-1">Qty</label>
-              <input type="number" class="form-control" id="qty" min="1" required placeholder="Qty" oninput="hitungTotal()">
+              <input type="number" class="form-control" id="qty" min="1" required value="1" oninput="hitungTotal()">
             </div>
             <div class="col-4">
               <label class="form-label small fw-semibold mb-1">Harga Asli</label>
@@ -179,7 +179,7 @@
                 <th>CUSTOMER</th>
                 <th>ALAMAT COD</th>
                 <th>TOKO & LOKASI</th>
-                <th>VARIAN</th>
+                <th>VARIAN RASA</th>
                 <th>QTY</th>
                 <th>HARGA JUAL</th>
                 <th>TAGIHAN</th>
@@ -770,6 +770,9 @@
       showCustomAlert('Berhasil!', 'Pesanan Anda telah berhasil tersimpan.', '✅');
       document.getElementById('orderForm').reset();
       document.getElementById('feeJastip').value = "30000";
+      document.getElementById('qty').value = "1";
+      document.getElementById('dayaTahan').value = "4";
+      document.getElementById('varianProduk').value = "Original";
       hitungTotal();
     })
     .catch(err => {
@@ -792,7 +795,7 @@
         <li class="list-group-item d-flex justify-content-between p-2"><span>Customer:</span> <strong>${o.namaCustomer || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Alamat COD:</span> <strong>${o.alamatCod || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Toko:</span> <strong>${o.tokoPesanan || '-'} (${o.lokasiToko || '-'})</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Varian:</span> <strong class="text-primary">${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Standar'}</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Varian Rasa:</span> <strong class="text-primary">${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Original'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Tanggal Jastip:</span> <strong>${formatCleanDate(o.batchJastip)}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Daya Tahan:</span> <strong>${o.dayaTahan || '-'} Hari</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Qty:</span> <strong>${o.qty || 1} pcs</strong></li>
@@ -836,7 +839,7 @@
         </div>
         <div class="row g-2 mb-2">
           <div class="col-6">
-            <label class="form-label small fw-semibold mb-1">Varian</label>
+            <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
             <input type="text" class="form-control form-control-sm" id="editVarian" value="${o.varianProduk || ''}" required>
           </div>
           <div class="col-6">
@@ -907,7 +910,7 @@
     btn.innerText = 'Menyimpan...';
 
     const qty = parseInt(document.getElementById('editQty').value) || 1;
-    const harga = parseInt(document.getElementById('editHarga').value) || 0;
+    const harga = parseInt(document.getElementById('hargaProduk').value) || 0;
     const fee = parseInt(document.getElementById('feeJastip').value) || 30000;
     const hargaJual = harga + fee;
     const total = hargaJual * qty;
@@ -1059,7 +1062,7 @@
         </td>
         <td>
           <span class="badge bg-primary-subtle text-primary border px-2 py-1">
-            ${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Standar'}
+            ${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Original'}
           </span>
         </td>
         <td><strong>${o.qty || 1}</strong></td>
@@ -1085,7 +1088,7 @@
       showCustomAlert('Pemberitahuan', 'Belum ada data pesanan untuk diunduh.', 'ℹ️');
       return;
     }
-    const headers = ["No", "Timestamp", "Nama Customer", "Alamat COD", "Toko Pesanan", "Lokasi Toko", "Varian", "Daya Tahan", "Tanggal Jastip", "Qty", "Harga Produk", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Order"];
+    const headers = ["No", "Timestamp", "Nama Customer", "Alamat COD", "Toko Pesanan", "Lokasi Toko", "Varian Rasa", "Daya Tahan", "Tanggal Jastip", "Qty", "Harga Produk", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Order"];
     const rows = orders.map((o, idx) => [
       idx + 1,
       `"${o.timestamp || ''}"`,
