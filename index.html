@@ -22,12 +22,17 @@
       border-radius: 6px;
       display: inline-block;
     }
-    .status-Pending { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-    .status-Belum-Bayar { background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
-    .status-Dibayar { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .status-Dibeli { background-color: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
-    .status-Selesai { background-color: #334155; color: #f8fafc; border: 1px solid #1e293b; }
-    .status-Batal { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    /* Accounting Status Styles */
+    .status-pay-Unpaid { background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+    .status-pay-Paid { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .status-pay-Refunded { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+    /* Logistics Status Styles */
+    .status-log-Order-Placed { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .status-log-Purchased { background-color: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+    .status-log-In-Transit { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .status-log-Delivered { background-color: #1e293b; color: #f8fafc; border: 1px solid #0f172a; }
+    .status-log-Cancelled { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
     .summary-card { border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; padding: 8px 12px; }
   </style>
@@ -174,18 +179,25 @@
         </div>
 
         <div class="row g-2 mb-2 align-items-center">
-          <div class="col-md-6">
-            <input type="text" id="searchFilter" class="form-control" placeholder="🔍 Cari customer, alamat, toko, lokasi..." oninput="renderTable()">
+          <div class="col-md-5">
+            <input type="text" id="searchFilter" class="form-control" placeholder="🔍 Cari customer, alamat, toko, status..." oninput="renderTable()">
           </div>
-          <div class="col-md-4">
-            <select id="filterStatus" class="form-select" onchange="renderTable()">
-              <option value="ALL">Semua Status</option>
-              <option value="Pending">Pending</option>
-              <option value="Belum Bayar">Belum Bayar</option>
-              <option value="Dibayar">Dibayar</option>
-              <option value="Dibeli">Dibeli</option>
-              <option value="Selesai">Selesai</option>
-              <option value="Batal">Batal</option>
+          <div class="col-md-3">
+            <select id="filterPayStatus" class="form-select" onchange="renderTable()">
+              <option value="ALL">Semua Payment</option>
+              <option value="Unpaid">Unpaid</option>
+              <option value="Paid">Paid</option>
+              <option value="Refunded">Refunded</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select id="filterLogStatus" class="form-select" onchange="renderTable()">
+              <option value="ALL">Semua Fulfillment</option>
+              <option value="Order Placed">Order Placed</option>
+              <option value="Purchased">Purchased</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Delivered">Delivered</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
           </div>
           <div class="col-md-2 text-md-end">
@@ -207,12 +219,13 @@
                 <th>PESANAN READY</th>
                 <th>QTY</th>
                 <th>TAGIHAN</th>
-                <th>STATUS</th>
+                <th>STATUS PAYMENT</th>
+                <th>FULFILLMENT</th>
                 <th>ACTION</th>
               </tr>
             </thead>
             <tbody id="tableBody">
-              <tr><td colspan="12" class="text-center py-3 text-muted">Memuat data dari Google Sheets...</td></tr>
+              <tr><td colspan="13" class="text-center py-3 text-muted">Memuat data dari Google Sheets...</td></tr>
             </tbody>
           </table>
         </div>
@@ -440,12 +453,10 @@
     }
   }
 
-  // Parser tanggal anti-geser timezone (Konversi akurat WIB GMT+7)
   function parseDateToWIB(dateStr) {
     if (!dateStr) return null;
     if (typeof dateStr === 'string' && dateStr.includes('T')) {
       const dtUtc = new Date(dateStr);
-      // Tambahkan offset WIB (+7 jam)
       const dtWib = new Date(dtUtc.getTime() + (7 * 60 * 60 * 1000));
       return dtWib;
     }
@@ -461,7 +472,7 @@
     const dt = parseDateToWIB(dateStr);
     if (!dt || isNaN(dt.getTime())) return { iso: '', formatted: '', hariNama: '', formattedFull: '' };
 
-    const day = dt.getDay(); // 0: Min, 1: Sen, ..., 5: Jum, 6: Sab
+    const day = dt.getDay();
     const namaHariList = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
     const hariNama = namaHariList[day];
 
@@ -882,7 +893,7 @@
   function fetchOrders() {
     if (!currentLoggedInAdmin) return;
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = `<tr><td colspan="12" class="text-center py-3 text-muted">⏳ Mengambil data...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" class="text-center py-3 text-muted">⏳ Mengambil data...</td></tr>`;
 
     fetch(SCRIPT_URL)
       .then(res => res.json())
@@ -891,18 +902,40 @@
           orders = data;
           renderTable();
         } else {
-          tbody.innerHTML = `<tr><td colspan="12" class="text-center py-3 text-danger">Format data tidak valid.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="13" class="text-center py-3 text-danger">Format data tidak valid.</td></tr>`;
         }
       })
       .catch(err => {
         console.error(err);
-        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-3 text-danger">Gagal memuat data spreadsheet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="text-center py-3 text-danger">Gagal memuat data spreadsheet.</td></tr>`;
       });
   }
 
-  function getStatusBadgeClass(status) {
-    const safe = (status || 'Pending').replace(/\s+/g, '-');
-    return `badge-status status-${safe}`;
+  function normalizePaymentStatus(val) {
+    const s = String(val || '').trim().toLowerCase();
+    if (s === 'dibayar' || s === 'paid') return 'Paid';
+    if (s === 'batal' || s === 'refunded') return 'Refunded';
+    return 'Unpaid';
+  }
+
+  function normalizeLogisticsStatus(orderStatus, payStatus) {
+    const s = String(orderStatus || '').trim();
+    if (['Order Placed', 'Purchased', 'In Transit', 'Delivered', 'Cancelled'].includes(s)) {
+      return s;
+    }
+    if (s === 'Dibeli') return 'Purchased';
+    if (s === 'Selesai') return 'Delivered';
+    if (s === 'Batal') return 'Cancelled';
+    return 'Order Placed';
+  }
+
+  function getPaymentBadgeClass(status) {
+    return `badge-status status-pay-${status}`;
+  }
+
+  function getLogisticsBadgeClass(status) {
+    const safe = status.replace(/\s+/g, '-');
+    return `badge-status status-log-${safe}`;
   }
 
   function formatCleanDate(str) {
@@ -953,7 +986,7 @@
       feeJastip: feePerPcs,
       hargaJual: hargaJual,
       totalTagihan: totalTagihan,
-      statusOrder: "Belum Bayar"
+      statusOrder: "Unpaid" // Default accounting payment status
     };
 
     const formData = new URLSearchParams();
@@ -992,6 +1025,8 @@
 
     const readyText = getCleanReadyText(o.lokasiToko, o.batchJastip);
     const orderDateRes = calculateReadyDate(o.batchJastip);
+    const payStatus = normalizePaymentStatus(o.statusOrder);
+    const logStatus = normalizeLogisticsStatus(o.statusFulfillment || o.statusOrder, payStatus);
 
     const modalContent = document.getElementById('modalContent');
     modalContent.innerHTML = `
@@ -1008,7 +1043,8 @@
         <li class="list-group-item d-flex justify-content-between p-2"><span>Harga Item / Pcs:</span> <strong>Rp ${Number(o.hargaProduk || 0).toLocaleString('id-ID')}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Fee Jastip / pcs:</span> <strong>Rp ${Number(o.feeJastip || 0).toLocaleString('id-ID')}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Harga Jual / pcs:</span> <strong>Rp ${Number(o.hargaJual || 0).toLocaleString('id-ID')}</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Status:</span> <span class="${getStatusBadgeClass(o.statusOrder)}">${o.statusOrder || 'Belum Bayar'}</span></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Status Payment:</span> <span class="${getPaymentBadgeClass(payStatus)}">${payStatus}</span></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Fulfillment:</span> <span class="${getLogisticsBadgeClass(logStatus)}">${logStatus}</span></li>
         <li class="list-group-item d-flex justify-content-between p-2 bg-light"><span>Total Tagihan:</span> <strong class="text-primary fs-6">Rp ${Number(o.totalTagihan || 0).toLocaleString('id-ID')}</strong></li>
       </ul>
     `;
@@ -1088,6 +1124,8 @@
     const isTiramisusu = curBrand === 'Tiramisusu';
     const currentPrice = Number(o.hargaProduk) || 0;
     const curLokasi = (o.lokasiToko && !o.lokasiToko.includes('Sabtu') && o.lokasiToko !== '-') ? o.lokasiToko : '';
+    const payStatus = normalizePaymentStatus(o.statusOrder);
+    const logStatus = normalizeLogisticsStatus(o.statusFulfillment || o.statusOrder, payStatus);
 
     const editBody = document.getElementById('editModalBody');
     editBody.innerHTML = `
@@ -1159,26 +1197,33 @@
           </div>
         </div>
         <div class="row g-2 mb-2">
-          ${isSuper ? `
           <div class="col-6">
-            <label class="form-label small fw-semibold mb-1 text-danger">Daya Tahan (Hari) ★</label>
-            <input type="number" class="form-control form-control-sm" id="editDayaTahan" value="${o.dayaTahan || 4}" min="1" required>
+            <label class="form-label small fw-semibold mb-1">Status Payment (Accounting)</label>
+            <select class="form-select form-select-sm" id="editStatusPay">
+              <option value="Unpaid" ${payStatus === 'Unpaid' ? 'selected' : ''}>Unpaid</option>
+              <option value="Paid" ${payStatus === 'Paid' ? 'selected' : ''}>Paid</option>
+              <option value="Refunded" ${payStatus === 'Refunded' ? 'selected' : ''}>Refunded</option>
+            </select>
           </div>
-          ` : `
-          <input type="hidden" id="editDayaTahan" value="${o.dayaTahan || 4}">
-          `}
-          <div class="${isSuper ? 'col-6' : 'col-12'}">
-            <label class="form-label small fw-semibold mb-1">Status Order</label>
-            <select class="form-select form-select-sm" id="editStatus">
-              <option value="Pending" ${o.statusOrder == 'Pending' ? 'selected' : ''}>Pending</option>
-              <option value="Belum Bayar" ${o.statusOrder == 'Belum Bayar' ? 'selected' : ''}>Belum Bayar</option>
-              <option value="Dibayar" ${o.statusOrder == 'Dibayar' ? 'selected' : ''}>Dibayar</option>
-              <option value="Dibeli" ${o.statusOrder == 'Dibeli' ? 'selected' : ''}>Dibeli</option>
-              <option value="Selesai" ${o.statusOrder == 'Selesai' ? 'selected' : ''}>Selesai</option>
-              <option value="Batal" ${o.statusOrder == 'Batal' ? 'selected' : ''}>Batal</option>
+          <div class="col-6">
+            <label class="form-label small fw-semibold mb-1">Status Fulfillment (Logistik)</label>
+            <select class="form-select form-select-sm" id="editStatusLog">
+              <option value="Order Placed" ${logStatus === 'Order Placed' ? 'selected' : ''}>Order Placed</option>
+              <option value="Purchased" ${logStatus === 'Purchased' ? 'selected' : ''}>Purchased</option>
+              <option value="In Transit" ${logStatus === 'In Transit' ? 'selected' : ''}>In Transit</option>
+              <option value="Delivered" ${logStatus === 'Delivered' ? 'selected' : ''}>Delivered</option>
+              <option value="Cancelled" ${logStatus === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
             </select>
           </div>
         </div>
+        ${isSuper ? `
+        <div class="mb-2">
+          <label class="form-label small fw-semibold mb-1 text-danger">Daya Tahan (Hari) ★</label>
+          <input type="number" class="form-control form-control-sm" id="editDayaTahan" value="${o.dayaTahan || 4}" min="1" required>
+        </div>
+        ` : `
+        <input type="hidden" id="editDayaTahan" value="${o.dayaTahan || 4}">
+        `}
         <div class="p-2 bg-light border rounded mt-2">
           <div class="d-flex justify-content-between small">
             <span>Harga Jual / pcs: <strong id="editDisplayJual">Rp ${Number(o.hargaJual || 0).toLocaleString('id-ID')}</strong></span>
@@ -1226,7 +1271,8 @@
     payload.append('feeJastip', feePerPcs);
     payload.append('hargaJual', hargaJual);
     payload.append('totalTagihan', totalTagihan);
-    payload.append('statusOrder', document.getElementById('editStatus').value);
+    payload.append('statusOrder', document.getElementById('editStatusPay').value);
+    payload.append('statusFulfillment', document.getElementById('editStatusLog').value);
 
     fetch(SCRIPT_URL, {
       method: 'POST',
@@ -1297,7 +1343,8 @@
 
   function renderTable() {
     const search = (document.getElementById('searchFilter').value || '').trim().toLowerCase();
-    const filterStatus = document.getElementById('filterStatus').value;
+    const filterPay = document.getElementById('filterPayStatus').value;
+    const filterLog = document.getElementById('filterLogStatus').value;
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
 
@@ -1312,7 +1359,9 @@
       const lokasi = String(o.lokasiToko || '').toLowerCase();
       const varian = String(o.varianProduk || '').toLowerCase();
       const tgl = String(o.batchJastip || '').toLowerCase();
-      const status = String(o.statusOrder || 'Pending').trim();
+      
+      const payStatus = normalizePaymentStatus(o.statusOrder);
+      const logStatus = normalizeLogisticsStatus(o.statusFulfillment || o.statusOrder, payStatus);
 
       const matchSearch = !search || 
                           nama.includes(search) || 
@@ -1320,11 +1369,14 @@
                           toko.includes(search) || 
                           lokasi.includes(search) || 
                           varian.includes(search) ||
-                          tgl.includes(search);
+                          tgl.includes(search) ||
+                          payStatus.toLowerCase().includes(search) ||
+                          logStatus.toLowerCase().includes(search);
 
-      const matchStatus = filterStatus === 'ALL' || status.toLowerCase() === filterStatus.toLowerCase();
+      const matchPay = (filterPay === 'ALL') || (payStatus.toLowerCase() === filterPay.toLowerCase());
+      const matchLog = (filterLog === 'ALL') || (logStatus.toLowerCase() === filterLog.toLowerCase());
 
-      return matchSearch && matchStatus;
+      return matchSearch && matchPay && matchLog;
     });
 
     filtered.forEach(o => {
@@ -1340,7 +1392,7 @@
     document.getElementById('totalOrderBadge').innerText = `Total: ${filtered.length}`;
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="12" class="text-center py-3 text-muted">Belum ada pesanan yang sesuai.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="13" class="text-center py-3 text-muted">Belum ada pesanan yang sesuai.</td></tr>`;
       return;
     }
 
@@ -1350,6 +1402,8 @@
       const readyVal = getCleanReadyText(o.lokasiToko, o.batchJastip);
       const orderDateInfo = calculateReadyDate(o.batchJastip);
       const lokasiTokoVal = (o.lokasiToko && !o.lokasiToko.includes('Sabtu') && o.lokasiToko !== '-') ? o.lokasiToko : '-';
+      const payStatus = normalizePaymentStatus(o.statusOrder);
+      const logStatus = normalizeLogisticsStatus(o.statusFulfillment || o.statusOrder, payStatus);
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -1372,7 +1426,10 @@
         <td><strong>${o.qty || 1}</strong></td>
         <td><strong class="text-primary">Rp ${Number(o.totalTagihan || 0).toLocaleString('id-ID')}</strong></td>
         <td>
-          <span class="${getStatusBadgeClass(o.statusOrder)}">${o.statusOrder || 'Belum Bayar'}</span>
+          <span class="${getPaymentBadgeClass(payStatus)}">${payStatus}</span>
+        </td>
+        <td>
+          <span class="${getLogisticsBadgeClass(logStatus)}">${logStatus}</span>
         </td>
         <td>
           <div class="btn-group" role="group">
@@ -1391,25 +1448,30 @@
       showCustomAlert('Pemberitahuan', 'Belum ada data pesanan untuk diunduh.', 'ℹ️');
       return;
     }
-    const headers = ["No", "Timestamp", "Nama Customer", "Alamat Customer", "Toko Pesanan", "Lokasi Toko", "Pesanan Ready", "Varian Rasa", "Daya Tahan", "Tanggal Order", "Qty", "Harga Item", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Order"];
-    const rows = orders.map((o, idx) => [
-      idx + 1,
-      `"${o.timestamp || ''}"`,
-      `"${o.namaCustomer || ''}"`,
-      `"${o.alamatCod || ''}"`,
-      `"${o.tokoPesanan || ''}"`,
-      `"${(o.lokasiToko && !o.lokasiToko.includes('Sabtu') && o.lokasiToko !== '-') ? o.lokasiToko : '-'}"`,
-      `"${getCleanReadyText(o.lokasiToko, o.batchJastip)}"`,
-      `"${o.varianProduk || ''}"`,
-      `"${o.dayaTahan || ''}"`,
-      `"${calculateReadyDate(o.batchJastip).formattedFull || formatCleanDate(o.batchJastip)}"`,
-      o.qty,
-      o.hargaProduk,
-      o.feeJastip,
-      o.hargaJual,
-      o.totalTagihan,
-      `"${o.statusOrder || ''}"`
-    ]);
+    const headers = ["No", "Timestamp", "Nama Customer", "Alamat Customer", "Toko Pesanan", "Lokasi Toko", "Pesanan Ready", "Varian Rasa", "Daya Tahan", "Tanggal Order", "Qty", "Harga Item", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Payment", "Status Fulfillment"];
+    const rows = orders.map((o, idx) => {
+      const payStatus = normalizePaymentStatus(o.statusOrder);
+      const logStatus = normalizeLogisticsStatus(o.statusFulfillment || o.statusOrder, payStatus);
+      return [
+        idx + 1,
+        `"${o.timestamp || ''}"`,
+        `"${o.namaCustomer || ''}"`,
+        `"${o.alamatCod || ''}"`,
+        `"${o.tokoPesanan || ''}"`,
+        `"${(o.lokasiToko && !o.lokasiToko.includes('Sabtu') && o.lokasiToko !== '-') ? o.lokasiToko : '-'}"`,
+        `"${getCleanReadyText(o.lokasiToko, o.batchJastip)}"`,
+        `"${o.varianProduk || ''}"`,
+        `"${o.dayaTahan || ''}"`,
+        `"${calculateReadyDate(o.batchJastip).formattedFull || formatCleanDate(o.batchJastip)}"`,
+        o.qty,
+        o.hargaProduk,
+        o.feeJastip,
+        o.hargaJual,
+        o.totalTagihan,
+        `"${payStatus}"`,
+        `"${logStatus}"`
+      ];
+    });
 
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
