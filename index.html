@@ -37,7 +37,6 @@
 <div class="container-fluid px-3 px-md-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
     <div class="d-flex align-items-center gap-2">
-      <!-- Inisial Bulat -->
       <div style="width: 38px; height: 38px; border-radius: 50%; background: #0d6efd; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1rem;">
         JB
       </div>
@@ -73,12 +72,18 @@
           <div class="row g-2 mb-2">
             <div class="col-12">
               <label class="form-label small fw-semibold mb-1">Toko Pesanan</label>
-              <input type="text" class="form-control" id="tokoPesanan" required placeholder="Nama Toko">
+              <!-- DROPDOWN BRAND TOKO -->
+              <select class="form-select" id="tokoPesanan" required onchange="hitungTotal()">
+                <option value="Tiramisusu">Tiramisusu</option>
+                <option value="Bolu Susu Lembang">Bolu Susu Lembang</option>
+                <option value="Kartika Sari">Kartika Sari</option>
+                <option value="Goela Semoet">Goela Semoet</option>
+                <option value="Roti Segar">Roti Segar</option>
+              </select>
             </div>
           </div>
           <div class="mb-2">
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
-            <!-- Klik atau fokus langsung memilih teks tanpa perlu hapus manual -->
             <input type="text" class="form-control" id="varianProduk" required placeholder="Varian Rasa" value="Varian Rasa" 
                    onclick="this.select()" 
                    onfocus="if(this.value==='Varian Rasa') this.value='';" 
@@ -100,16 +105,14 @@
               <input type="number" class="form-control" id="qty" min="1" required value="1" oninput="hitungTotal()">
             </div>
             <div class="col-4">
-              <label class="form-label small fw-semibold mb-1">Harga Asli</label>
+              <label class="form-label small fw-semibold mb-1">Harga Asli / pcs</label>
               <input type="number" class="form-control" id="hargaProduk" min="0" required placeholder="Rp" oninput="hitungTotal()">
             </div>
             <div class="col-4">
-              <label class="form-label small fw-semibold mb-1">Fee Jastip</label>
-              <select class="form-select" id="feeJastip" required onchange="hitungTotal()">
-                <option value="20000">20.000</option>
-                <option value="25000">25.000</option>
-                <option value="30000" selected>30.000</option>
-              </select>
+              <label class="form-label small fw-semibold mb-1">Fee / pcs</label>
+              <!-- BAKU OTOMATIS & TERKUNCI -->
+              <input type="text" class="form-control bg-light text-muted fw-semibold" id="feeJastipDisplay" readonly value="Rp 30.000">
+              <input type="hidden" id="feeJastip" value="30000">
             </div>
           </div>
 
@@ -118,9 +121,13 @@
               <span>Harga Jual / pcs:</span>
               <strong id="displayHargaJual" class="text-dark">Rp 0</strong>
             </div>
-            <div class="d-flex justify-content-between small fw-bold text-dark mt-1">
+            <div class="d-flex justify-content-between small text-muted mt-1">
+              <span>Total Fee Jastip:</span>
+              <strong id="displayTotalFee" class="text-secondary">Rp 0</strong>
+            </div>
+            <div class="d-flex justify-content-between small fw-bold text-dark mt-1 pt-1 border-top">
               <span>Total Tagihan:</span>
-              <strong class="text-primary" id="displayTotalTagihan">Rp 0</strong>
+              <strong class="text-primary fs-6" id="displayTotalTagihan">Rp 0</strong>
             </div>
           </div>
 
@@ -181,7 +188,7 @@
                 <th style="width: 45px;" class="text-center">NO</th>
                 <th>CUSTOMER</th>
                 <th>ALAMAT COD</th>
-                <th>TOKO & LOKASI</th>
+                <th>TOKO</th>
                 <th>VARIAN RASA</th>
                 <th>QTY</th>
                 <th>HARGA JUAL</th>
@@ -200,7 +207,7 @@
   </div>
 </div>
 
-<!-- MODAL NOTIFIKASI UMUM (AUTO-DISMISS DALAM BEBERAPA DETIK) -->
+<!-- MODAL NOTIFIKASI UMUM (AUTO-DISMISS 1.5 DETIK) -->
 <div class="modal fade" id="customAlertModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content text-center p-3">
@@ -404,7 +411,6 @@
   const editAdminModalEl = new bootstrap.Modal(document.getElementById('editAdminModal'));
   const customAlertModalEl = new bootstrap.Modal(document.getElementById('customAlertModal'));
 
-  // Otomatis menutup notifikasi modal setelah 1.5 detik
   function showCustomAlert(title, message, icon = '✅', duration = 1500) {
     if (alertTimer) clearTimeout(alertTimer);
 
@@ -418,6 +424,37 @@
         customAlertModalEl.hide();
       }, duration);
     }
+  }
+
+  // Menentukan Fee per pcs berdasarkan aturan Brand & Qty
+  function getFeePerPcs(brand, qty) {
+    const b = (brand || '').trim();
+    if (b === 'Tiramisusu') return 30000;
+    if (b === 'Bolu Susu Lembang') return 15000;
+    if (b === 'Kartika Sari') return 25000;
+    if (b === 'Goela Semoet') return 25000;
+    if (b === 'Roti Segar') {
+      return (qty >= 3) ? 4000 : 5000;
+    }
+    return 30000;
+  }
+
+  function hitungTotal() {
+    const brand = document.getElementById('tokoPesanan').value;
+    const qty = parseInt(document.getElementById('qty').value) || 1;
+    const harga = parseInt(document.getElementById('hargaProduk').value) || 0;
+
+    const feePerPcs = getFeePerPcs(brand, qty);
+    document.getElementById('feeJastip').value = feePerPcs;
+    document.getElementById('feeJastipDisplay').value = 'Rp ' + feePerPcs.toLocaleString('id-ID');
+
+    const totalFee = feePerPcs * qty;
+    const hargaJualPerPcs = (qty > 0 || harga > 0) ? (harga + feePerPcs) : 0;
+    const totalTagihan = (harga * qty) + totalFee;
+
+    document.getElementById('displayHargaJual').innerText = 'Rp ' + hargaJualPerPcs.toLocaleString('id-ID');
+    document.getElementById('displayTotalFee').innerText = 'Rp ' + totalFee.toLocaleString('id-ID');
+    document.getElementById('displayTotalTagihan').innerText = 'Rp ' + totalTagihan.toLocaleString('id-ID');
   }
 
   function fetchAdminsFromCloud(callback) {
@@ -697,17 +734,6 @@
       });
   }
 
-  function hitungTotal() {
-    const qty = parseInt(document.getElementById('qty').value) || 0;
-    const harga = parseInt(document.getElementById('hargaProduk').value) || 0;
-    const fee = parseInt(document.getElementById('feeJastip').value) || 0;
-    const hargaJual = (qty > 0 || harga > 0) ? (harga + fee) : 0;
-    const totalTagihan = hargaJual * qty;
-
-    document.getElementById('displayHargaJual').innerText = 'Rp ' + hargaJual.toLocaleString('id-ID');
-    document.getElementById('displayTotalTagihan').innerText = 'Rp ' + totalTagihan.toLocaleString('id-ID');
-  }
-
   function fetchOrders() {
     if (!currentLoggedInAdmin) return;
     const tbody = document.getElementById('tableBody');
@@ -748,23 +774,24 @@
     btn.disabled = true;
     btn.innerText = 'Menyimpan...';
 
+    const brand = document.getElementById('tokoPesanan').value;
     const qty = parseInt(document.getElementById('qty').value) || 1;
     const harga = parseInt(document.getElementById('hargaProduk').value) || 0;
-    const fee = parseInt(document.getElementById('feeJastip').value) || 30000;
-    const hargaJual = harga + fee;
-    const totalTagihan = hargaJual * qty;
+    const feePerPcs = getFeePerPcs(brand, qty);
+    const hargaJual = harga + feePerPcs;
+    const totalTagihan = (harga * qty) + (feePerPcs * qty);
 
     const payload = {
       namaCustomer: document.getElementById('namaCustomer').value,
       alamatCod: document.getElementById('alamatCod').value,
-      tokoPesanan: document.getElementById('tokoPesanan').value,
+      tokoPesanan: brand,
       lokasiToko: "-",
       varianProduk: document.getElementById('varianProduk').value,
       batchJastip: document.getElementById('tanggalJastip').value,
       dayaTahan: document.getElementById('dayaTahan').value,
       qty: qty,
       hargaProduk: harga,
-      feeJastip: fee,
+      feeJastip: feePerPcs,
       hargaJual: hargaJual,
       totalTagihan: totalTagihan,
       statusOrder: "Belum Bayar"
@@ -782,7 +809,7 @@
     .then(() => {
       showCustomAlert('Berhasil!', 'Pesanan Anda telah berhasil tersimpan.', '✅');
       document.getElementById('orderForm').reset();
-      document.getElementById('feeJastip').value = "30000";
+      document.getElementById('tokoPesanan').value = "Tiramisusu";
       document.getElementById('qty').value = "1";
       document.getElementById('dayaTahan').value = "4";
       document.getElementById('varianProduk').value = "Varian Rasa";
@@ -807,13 +834,13 @@
       <ul class="list-group list-group-flush mb-0" style="font-size: 0.78rem;">
         <li class="list-group-item d-flex justify-content-between p-2"><span>Customer:</span> <strong>${o.namaCustomer || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Alamat COD:</span> <strong>${o.alamatCod || '-'}</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Toko:</span> <strong>${o.tokoPesanan || '-'} (${o.lokasiToko || '-'})</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Toko:</span> <strong>${o.tokoPesanan || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Varian Rasa:</span> <strong class="text-primary">${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Varian Rasa'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Tanggal Jastip:</span> <strong>${formatCleanDate(o.batchJastip)}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Daya Tahan:</span> <strong>${o.dayaTahan || '-'} Hari</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Qty:</span> <strong>${o.qty || 1} pcs</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Harga Asli:</span> <strong>Rp ${Number(o.hargaProduk || 0).toLocaleString('id-ID')}</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Fee Jastip:</span> <strong>Rp ${Number(o.feeJastip || 0).toLocaleString('id-ID')}</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Harga Asli / pcs:</span> <strong>Rp ${Number(o.hargaProduk || 0).toLocaleString('id-ID')}</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Fee Jastip / pcs:</span> <strong>Rp ${Number(o.feeJastip || 0).toLocaleString('id-ID')}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Harga Jual / pcs:</span> <strong>Rp ${Number(o.hargaJual || 0).toLocaleString('id-ID')}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Status:</span> <span class="${getStatusBadgeClass(o.statusOrder)}">${o.statusOrder || 'Belum Bayar'}</span></li>
         <li class="list-group-item d-flex justify-content-between p-2 bg-light"><span>Total Tagihan:</span> <strong class="text-primary fs-6">Rp ${Number(o.totalTagihan || 0).toLocaleString('id-ID')}</strong></li>
@@ -822,10 +849,31 @@
     previewModalEl.show();
   }
 
+  function hitungEditTotal() {
+    const brand = document.getElementById('editToko').value;
+    const qty = parseInt(document.getElementById('editQty').value) || 1;
+    const harga = parseInt(document.getElementById('editHarga').value) || 0;
+
+    const feePerPcs = getFeePerPcs(brand, qty);
+    document.getElementById('editFee').value = feePerPcs;
+    document.getElementById('editFeeDisplay').value = 'Rp ' + feePerPcs.toLocaleString('id-ID');
+
+    const totalFee = feePerPcs * qty;
+    const hargaJualPerPcs = harga + feePerPcs;
+    const totalTagihan = (harga * qty) + totalFee;
+
+    document.getElementById('editDisplayJual').innerText = 'Rp ' + hargaJualPerPcs.toLocaleString('id-ID');
+    document.getElementById('editDisplayTotal').innerText = 'Rp ' + totalTagihan.toLocaleString('id-ID');
+  }
+
   function directEditOrder(idx) {
     const o = orders[idx];
     if (!o) return;
     currentEditOrder = o;
+
+    const curBrand = o.tokoPesanan || 'Tiramisusu';
+    const curQty = Number(o.qty) || 1;
+    const curFee = getFeePerPcs(curBrand, curQty);
 
     const editBody = document.getElementById('editModalBody');
     editBody.innerHTML = `
@@ -841,19 +889,21 @@
           </div>
         </div>
         <div class="row g-2 mb-2">
-          <div class="col-6">
+          <div class="col-12">
             <label class="form-label small fw-semibold mb-1">Toko Pesanan</label>
-            <input type="text" class="form-control form-control-sm" id="editToko" value="${o.tokoPesanan || ''}" required>
-          </div>
-          <div class="col-6">
-            <label class="form-label small fw-semibold mb-1">Lokasi Toko</label>
-            <input type="text" class="form-control form-control-sm" id="editLokasi" value="${o.lokasiToko || ''}">
+            <select class="form-select form-select-sm" id="editToko" required onchange="hitungEditTotal()">
+              <option value="Tiramisusu" ${curBrand === 'Tiramisusu' ? 'selected' : ''}>Tiramisusu</option>
+              <option value="Bolu Susu Lembang" ${curBrand === 'Bolu Susu Lembang' ? 'selected' : ''}>Bolu Susu Lembang</option>
+              <option value="Kartika Sari" ${curBrand === 'Kartika Sari' ? 'selected' : ''}>Kartika Sari</option>
+              <option value="Goela Semoet" ${curBrand === 'Goela Semoet' ? 'selected' : ''}>Goela Semoet</option>
+              <option value="Roti Segar" ${curBrand === 'Roti Segar' ? 'selected' : ''}>Roti Segar</option>
+            </select>
           </div>
         </div>
         <div class="row g-2 mb-2">
           <div class="col-6">
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
-            <input type="text" class="form-control form-control-sm" id="editVarian" value="${o.varianProduk || ''}" required onclick="this.select()">
+            <input type="text" class="form-control form-control-sm" id="editVarian" value="${o.varianProduk || 'Varian Rasa'}" required onclick="this.select()">
           </div>
           <div class="col-6">
             <label class="form-label small fw-semibold mb-1">Tanggal Jastip</label>
@@ -863,19 +913,16 @@
         <div class="row g-2 mb-2">
           <div class="col-4">
             <label class="form-label small fw-semibold mb-1">Qty</label>
-            <input type="number" class="form-control form-control-sm" id="editQty" value="${o.qty || 1}" min="1" required oninput="hitungEditTotal()">
+            <input type="number" class="form-control form-control-sm" id="editQty" value="${curQty}" min="1" required oninput="hitungEditTotal()">
           </div>
           <div class="col-4">
-            <label class="form-label small fw-semibold mb-1">Harga Asli</label>
+            <label class="form-label small fw-semibold mb-1">Harga Asli / pcs</label>
             <input type="number" class="form-control form-control-sm" id="editHarga" value="${o.hargaProduk || 0}" min="0" required oninput="hitungEditTotal()">
           </div>
           <div class="col-4">
-            <label class="form-label small fw-semibold mb-1">Fee Jastip</label>
-            <select class="form-select form-select-sm" id="editFee" onchange="hitungEditTotal()">
-              <option value="20000" ${o.feeJastip == 20000 ? 'selected' : ''}>20.000</option>
-              <option value="25000" ${o.feeJastip == 25000 ? 'selected' : ''}>25.000</option>
-              <option value="30000" ${o.feeJastip == 30000 ? 'selected' : ''}>30.000</option>
-            </select>
+            <label class="form-label small fw-semibold mb-1">Fee / pcs</label>
+            <input type="text" class="form-control form-control-sm bg-light text-muted fw-semibold" id="editFeeDisplay" readonly value="Rp ${curFee.toLocaleString('id-ID')}">
+            <input type="hidden" id="editFee" value="${curFee}">
           </div>
         </div>
         <div class="row g-2 mb-2">
@@ -897,24 +944,14 @@
         </div>
         <div class="p-2 bg-light border rounded mt-2">
           <div class="d-flex justify-content-between small">
-            <span>Harga Jual: <strong id="editDisplayJual">Rp ${Number(o.hargaJual || 0).toLocaleString('id-ID')}</strong></span>
+            <span>Harga Jual / pcs: <strong id="editDisplayJual">Rp ${Number(o.hargaJual || 0).toLocaleString('id-ID')}</strong></span>
             <span>Total Tagihan: <strong class="text-primary" id="editDisplayTotal">Rp ${Number(o.totalTagihan || 0).toLocaleString('id-ID')}</strong></span>
           </div>
         </div>
       </form>
     `;
     editModalEl.show();
-  }
-
-  function hitungEditTotal() {
-    const qty = parseInt(document.getElementById('editQty').value) || 0;
-    const harga = parseInt(document.getElementById('editHarga').value) || 0;
-    const fee = parseInt(document.getElementById('editFee').value) || 0;
-    const hargaJual = harga + fee;
-    const total = hargaJual * qty;
-
-    document.getElementById('editDisplayJual').innerText = 'Rp ' + hargaJual.toLocaleString('id-ID');
-    document.getElementById('editDisplayTotal').innerText = 'Rp ' + total.toLocaleString('id-ID');
+    hitungEditTotal();
   }
 
   function saveEditedOrder() {
@@ -922,27 +959,28 @@
     btn.disabled = true;
     btn.innerText = 'Menyimpan...';
 
+    const brand = document.getElementById('editToko').value;
     const qty = parseInt(document.getElementById('editQty').value) || 1;
     const harga = parseInt(document.getElementById('editHarga').value) || 0;
-    const fee = parseInt(document.getElementById('feeJastip').value) || 30000;
-    const hargaJual = harga + fee;
-    const total = hargaJual * qty;
+    const feePerPcs = getFeePerPcs(brand, qty);
+    const hargaJual = harga + feePerPcs;
+    const totalTagihan = (harga * qty) + (feePerPcs * qty);
 
     const payload = new URLSearchParams();
     payload.append('action', 'editOrder');
     payload.append('rowIndex', currentEditOrder.rowIndex);
     payload.append('namaCustomer', document.getElementById('editCustomer').value);
     payload.append('alamatCod', document.getElementById('editCod').value);
-    payload.append('tokoPesanan', document.getElementById('editToko').value);
-    payload.append('lokasiToko', document.getElementById('editLokasi').value || "-");
+    payload.append('tokoPesanan', brand);
+    payload.append('lokasiToko', "-");
     payload.append('varianProduk', document.getElementById('editVarian').value);
     payload.append('batchJastip', document.getElementById('editTanggal').value);
     payload.append('dayaTahan', document.getElementById('editDayaTahan').value);
     payload.append('qty', qty);
     payload.append('hargaProduk', harga);
-    payload.append('feeJastip', fee);
+    payload.append('feeJastip', feePerPcs);
     payload.append('hargaJual', hargaJual);
-    payload.append('totalTagihan', total);
+    payload.append('totalTagihan', totalTagihan);
     payload.append('statusOrder', document.getElementById('editStatus').value);
 
     fetch(SCRIPT_URL, {
@@ -1026,7 +1064,6 @@
       const nama = String(o.namaCustomer || '').toLowerCase();
       const cod = String(o.alamatCod || '').toLowerCase();
       const toko = String(o.tokoPesanan || '').toLowerCase();
-      const lokasi = String(o.lokasiToko || '').toLowerCase();
       const varian = String(o.varianProduk || '').toLowerCase();
       const tgl = String(o.batchJastip || '').toLowerCase();
       const status = String(o.statusOrder || 'Pending').trim();
@@ -1035,7 +1072,6 @@
                           nama.includes(search) || 
                           cod.includes(search) || 
                           toko.includes(search) || 
-                          lokasi.includes(search) || 
                           varian.includes(search) ||
                           tgl.includes(search);
 
@@ -1069,10 +1105,7 @@
         <td class="text-center text-muted fw-semibold">${index + 1}</td>
         <td><div class="fw-bold">${o.namaCustomer || '-'}</div></td>
         <td><span class="text-muted small">📍 ${o.alamatCod || '-'}</span></td>
-        <td>
-          <div class="fw-semibold">${o.tokoPesanan || '-'}</div>
-          <small class="text-muted">${o.lokasiToko || '-'}</small>
-        </td>
+        <td><div class="fw-semibold">${o.tokoPesanan || '-'}</div></td>
         <td>
           <span class="badge bg-primary-subtle text-primary border px-2 py-1">
             ${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Varian Rasa'}
