@@ -72,7 +72,7 @@
           <div class="row g-2 mb-2">
             <div class="col-12">
               <label class="form-label small fw-semibold mb-1">Toko Pesanan</label>
-              <select class="form-select" id="tokoPesanan" required onchange="hitungTotal()">
+              <select class="form-select" id="tokoPesanan" required onchange="handleTokoChange()">
                 <option value="Tiramisusu">Tiramisusu</option>
                 <option value="Bolu Susu Lembang">Bolu Susu Lembang</option>
                 <option value="Kartika Sari">Kartika Sari</option>
@@ -81,9 +81,17 @@
               </select>
             </div>
           </div>
-          <div class="mb-2">
+
+          <!-- CONTAINER VARIAN RASA (DINAMIS DROPDOWN / TEXT) -->
+          <div class="mb-2" id="varianContainer">
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
-            <input type="text" class="form-control" id="varianProduk" required placeholder="Varian Rasa" value="Varian Rasa" 
+            <select class="form-select" id="varianTiramisusuSelect" onchange="handleTiramisusuVarianChange()">
+              <option value="Original" data-harga="89000">Original (Rp 89.000)</option>
+              <option value="Cookies n Cream" data-harga="89000">Cookies n Cream (Rp 89.000)</option>
+              <option value="Matcha" data-harga="99000">Matcha (Rp 99.000)</option>
+              <option value="Pistachio Kunafa" data-harga="119000">Pistachio Kunafa (Rp 119.000)</option>
+            </select>
+            <input type="text" class="form-control d-none" id="varianProdukManual" placeholder="Varian Rasa" value="Varian Rasa"
                    onclick="this.select()" 
                    onfocus="if(this.value==='Varian Rasa') this.value='';" 
                    onblur="if(!this.value.trim()) this.value='Varian Rasa';">
@@ -94,6 +102,7 @@
             <div class="col-6">
               <label class="form-label small fw-semibold mb-1">Tanggal Order</label>
               <input type="date" class="form-control" id="tanggalOrder" required onchange="updateReadyDate()">
+              <div id="hariOrderDisplay" class="text-muted mt-1" style="font-size: 0.72rem; min-height: 16px;"></div>
             </div>
             <div class="col-6">
               <label class="form-label small fw-semibold mb-1">Pesanan Ready</label>
@@ -108,8 +117,8 @@
               <input type="number" class="form-control" id="qty" min="1" required value="1" oninput="hitungTotal()">
             </div>
             <div class="col-4">
-              <label class="form-label small fw-semibold mb-1">Harga Asli / pcs</label>
-              <input type="number" class="form-control" id="hargaProduk" min="0" required placeholder="Rp" oninput="hitungTotal()">
+              <label class="form-label small fw-semibold mb-1">Harga Item / Pcs</label>
+              <input type="number" class="form-control bg-light" id="hargaProduk" min="0" required value="89000" readonly oninput="hitungTotal()">
             </div>
             <div class="col-4">
               <label class="form-label small fw-semibold mb-1">Fee / pcs</label>
@@ -428,21 +437,27 @@
     }
   }
 
-  // Menghitung tanggal Sabtu berikutnya jika order Senin - Jumat
+  // Aturan Cut-off: Senin-Jumat ikut Sabtu minggu ini. Sabtu & Minggu ikut Sabtu minggu depan.
   function calculateReadyDate(dateStr) {
-    if (!dateStr) return { iso: '', formatted: '' };
+    if (!dateStr) return { iso: '', formatted: '', hariNama: '' };
     const parts = dateStr.split('-');
     const dt = new Date(parts[0], parts[1] - 1, parts[2]);
     const day = dt.getDay(); // 0: Min, 1: Sen, ..., 5: Jum, 6: Sab
 
+    const namaHariList = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    const hariNama = namaHariList[day];
+
     let targetDate = new Date(dt);
     if (day >= 1 && day <= 5) {
-      // Senin (1) s/d Jumat (5) -> Maju ke Sabtu minggu tersebut (6 - day)
+      // Senin-Jumat: Sabtu minggu yang sama
       targetDate.setDate(dt.getDate() + (6 - day));
+    } else if (day === 6) {
+      // Sabtu: Cut-off terlewat, ikut Sabtu minggu depan (+7 hari)
+      targetDate.setDate(dt.getDate() + 7);
     } else if (day === 0) {
-      // Minggu -> Sabtu minggu depan (+6)
+      // Minggu: Ikut Sabtu minggu depannya (+6 hari)
       targetDate.setDate(dt.getDate() + 6);
-    } // Jika Sabtu (6), tetap hari Sabtu tersebut
+    }
 
     const y = targetDate.getFullYear();
     const m = String(targetDate.getMonth() + 1).padStart(2, '0');
@@ -452,7 +467,7 @@
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const formatted = targetDate.toLocaleDateString('id-ID', options);
 
-    return { iso, formatted };
+    return { iso, formatted, hariNama };
   }
 
   function updateReadyDate() {
@@ -460,11 +475,13 @@
     if (!val) {
       document.getElementById('pesananReadyDisplay').value = '';
       document.getElementById('pesananReady').value = '';
+      document.getElementById('hariOrderDisplay').innerText = '';
       return;
     }
     const res = calculateReadyDate(val);
+    document.getElementById('hariOrderDisplay').innerText = `Hari: ${res.hariNama}`;
     document.getElementById('pesananReadyDisplay').value = res.formatted;
-    document.getElementById('pesananReady').value = res.formatted; // Simpan teks Hari, DD MMMM YYYY ke sheet
+    document.getElementById('pesananReady').value = res.formatted;
   }
 
   function updateEditReadyDate() {
@@ -472,11 +489,47 @@
     if (!val) {
       document.getElementById('editReadyDisplay').value = '';
       document.getElementById('editReady').value = '';
+      document.getElementById('editHariOrderDisplay').innerText = '';
       return;
     }
     const res = calculateReadyDate(val);
+    document.getElementById('editHariOrderDisplay').innerText = `Hari: ${res.hariNama}`;
     document.getElementById('editReadyDisplay').value = res.formatted;
     document.getElementById('editReady').value = res.formatted;
+  }
+
+  function handleTokoChange() {
+    const toko = document.getElementById('tokoPesanan').value;
+    const selectEl = document.getElementById('varianTiramisusuSelect');
+    const textEl = document.getElementById('varianProdukManual');
+    const hargaEl = document.getElementById('hargaProduk');
+
+    if (toko === 'Tiramisusu') {
+      selectEl.classList.remove('d-none');
+      textEl.classList.add('d-none');
+      handleTiramisusuVarianChange();
+    } else {
+      selectEl.classList.add('d-none');
+      textEl.classList.remove('d-none');
+      hargaEl.readOnly = false;
+      hargaEl.classList.remove('bg-light');
+      if (hargaEl.value === '89000' || hargaEl.value === '99000' || hargaEl.value === '119000') {
+        hargaEl.value = '0';
+      }
+      hitungTotal();
+    }
+  }
+
+  function handleTiramisusuVarianChange() {
+    const selectEl = document.getElementById('varianTiramisusuSelect');
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    const harga = parseInt(selectedOption.getAttribute('data-harga')) || 89000;
+    
+    const hargaEl = document.getElementById('hargaProduk');
+    hargaEl.value = harga;
+    hargaEl.readOnly = true;
+    hargaEl.classList.add('bg-light');
+    hitungTotal();
   }
 
   function getFeePerPcs(brand, qty) {
@@ -833,12 +886,19 @@
     const hargaJual = harga + feePerPcs;
     const totalTagihan = (harga * qty) + (feePerPcs * qty);
 
+    let varian = '';
+    if (brand === 'Tiramisusu') {
+      varian = document.getElementById('varianTiramisusuSelect').value;
+    } else {
+      varian = document.getElementById('varianProdukManual').value;
+    }
+
     const payload = {
       namaCustomer: document.getElementById('namaCustomer').value,
       alamatCod: document.getElementById('alamatCod').value,
       tokoPesanan: brand,
-      lokasiToko: document.getElementById('pesananReady').value || "-", // Menyimpan status pesanan ready ke kolom batch/lokasi
-      varianProduk: document.getElementById('varianProduk').value,
+      lokasiToko: document.getElementById('pesananReady').value || "-",
+      varianProduk: varian,
       batchJastip: document.getElementById('tanggalOrder').value,
       dayaTahan: "4",
       qty: qty,
@@ -863,10 +923,11 @@
       document.getElementById('orderForm').reset();
       document.getElementById('tokoPesanan').value = "Tiramisusu";
       document.getElementById('qty').value = "1";
-      document.getElementById('varianProduk').value = "Varian Rasa";
+      document.getElementById('varianTiramisusuSelect').value = "Original";
       document.getElementById('pesananReadyDisplay').value = "";
       document.getElementById('pesananReady').value = "";
-      hitungTotal();
+      document.getElementById('hariOrderDisplay').innerText = "";
+      handleTokoChange();
     })
     .catch(err => {
       console.error(err);
@@ -883,6 +944,7 @@
     if (!o) return;
 
     const readyText = o.lokasiToko && o.lokasiToko !== '-' ? o.lokasiToko : calculateReadyDate(o.batchJastip).formatted;
+    const hariOrder = calculateReadyDate(o.batchJastip).hariNama;
 
     const modalContent = document.getElementById('modalContent');
     modalContent.innerHTML = `
@@ -890,12 +952,12 @@
         <li class="list-group-item d-flex justify-content-between p-2"><span>Customer:</span> <strong>${o.namaCustomer || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Titik COD:</span> <strong>${o.alamatCod || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Toko:</span> <strong>${o.tokoPesanan || '-'}</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Varian Rasa:</span> <strong class="text-primary">${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Varian Rasa'}</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Tanggal Order:</span> <strong>${formatCleanDate(o.batchJastip)}</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Varian Rasa:</span> <strong class="text-primary">${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Original'}</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Tanggal Order:</span> <strong>${hariOrder ? hariOrder + ', ' : ''}${formatCleanDate(o.batchJastip)}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2 bg-warning-subtle text-dark"><span>Pesanan Ready:</span> <strong class="text-primary">${readyText || '-'}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Daya Tahan:</span> <strong>${o.dayaTahan || '-'} Hari</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Qty:</span> <strong>${o.qty || 1} pcs</strong></li>
-        <li class="list-group-item d-flex justify-content-between p-2"><span>Harga Asli / pcs:</span> <strong>Rp ${Number(o.hargaProduk || 0).toLocaleString('id-ID')}</strong></li>
+        <li class="list-group-item d-flex justify-content-between p-2"><span>Harga Item / Pcs:</span> <strong>Rp ${Number(o.hargaProduk || 0).toLocaleString('id-ID')}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Fee Jastip / pcs:</span> <strong>Rp ${Number(o.feeJastip || 0).toLocaleString('id-ID')}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Harga Jual / pcs:</span> <strong>Rp ${Number(o.hargaJual || 0).toLocaleString('id-ID')}</strong></li>
         <li class="list-group-item d-flex justify-content-between p-2"><span>Status:</span> <span class="${getStatusBadgeClass(o.statusOrder)}">${o.statusOrder || 'Belum Bayar'}</span></li>
@@ -903,6 +965,37 @@
       </ul>
     `;
     previewModalEl.show();
+  }
+
+  function handleEditTokoChange() {
+    const toko = document.getElementById('editToko').value;
+    const selectEl = document.getElementById('editVarianTiramisusu');
+    const textEl = document.getElementById('editVarianManual');
+    const hargaEl = document.getElementById('editHarga');
+
+    if (toko === 'Tiramisusu') {
+      selectEl.classList.remove('d-none');
+      textEl.classList.add('d-none');
+      handleEditTiramisusuVarianChange();
+    } else {
+      selectEl.classList.add('d-none');
+      textEl.classList.remove('d-none');
+      hargaEl.readOnly = false;
+      hargaEl.classList.remove('bg-light');
+      hitungEditTotal();
+    }
+  }
+
+  function handleEditTiramisusuVarianChange() {
+    const selectEl = document.getElementById('editVarianTiramisusu');
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    const harga = parseInt(selectedOption.getAttribute('data-harga')) || 89000;
+    
+    const hargaEl = document.getElementById('editHarga');
+    hargaEl.value = harga;
+    hargaEl.readOnly = true;
+    hargaEl.classList.add('bg-light');
+    hitungEditTotal();
   }
 
   function hitungEditTotal() {
@@ -932,6 +1025,7 @@
     const curFee = getFeePerPcs(curBrand, curQty);
     const isSuper = currentLoggedInAdmin && currentLoggedInAdmin.role === 'superadmin';
     const defaultReady = o.lokasiToko && o.lokasiToko !== '-' ? o.lokasiToko : calculateReadyDate(o.batchJastip).formatted;
+    const isTiramisusu = curBrand === 'Tiramisusu';
 
     const editBody = document.getElementById('editModalBody');
     editBody.innerHTML = `
@@ -949,7 +1043,7 @@
         <div class="row g-2 mb-2">
           <div class="col-12">
             <label class="form-label small fw-semibold mb-1">Toko Pesanan</label>
-            <select class="form-select form-select-sm" id="editToko" required onchange="hitungEditTotal()">
+            <select class="form-select form-select-sm" id="editToko" required onchange="handleEditTokoChange()">
               <option value="Tiramisusu" ${curBrand === 'Tiramisusu' ? 'selected' : ''}>Tiramisusu</option>
               <option value="Bolu Susu Lembang" ${curBrand === 'Bolu Susu Lembang' ? 'selected' : ''}>Bolu Susu Lembang</option>
               <option value="Kartika Sari" ${curBrand === 'Kartika Sari' ? 'selected' : ''}>Kartika Sari</option>
@@ -961,13 +1055,20 @@
         <div class="row g-2 mb-2">
           <div class="col-12">
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
-            <input type="text" class="form-control form-control-sm" id="editVarian" value="${o.varianProduk || 'Varian Rasa'}" required onclick="this.select()">
+            <select class="form-select form-select-sm ${!isTiramisusu ? 'd-none' : ''}" id="editVarianTiramisusu" onchange="handleEditTiramisusuVarianChange()">
+              <option value="Original" data-harga="89000" ${o.varianProduk === 'Original' ? 'selected' : ''}>Original (Rp 89.000)</option>
+              <option value="Cookies n Cream" data-harga="89000" ${o.varianProduk === 'Cookies n Cream' ? 'selected' : ''}>Cookies n Cream (Rp 89.000)</option>
+              <option value="Matcha" data-harga="99000" ${o.varianProduk === 'Matcha' ? 'selected' : ''}>Matcha (Rp 99.000)</option>
+              <option value="Pistachio Kunafa" data-harga="119000" ${o.varianProduk === 'Pistachio Kunafa' ? 'selected' : ''}>Pistachio Kunafa (Rp 119.000)</option>
+            </select>
+            <input type="text" class="form-control form-control-sm ${isTiramisusu ? 'd-none' : ''}" id="editVarianManual" value="${o.varianProduk || 'Varian Rasa'}" onclick="this.select()">
           </div>
         </div>
         <div class="row g-2 mb-2">
           <div class="col-6">
             <label class="form-label small fw-semibold mb-1">Tanggal Order</label>
             <input type="date" class="form-control form-control-sm" id="editTanggalOrder" value="${formatCleanDate(o.batchJastip)}" required onchange="updateEditReadyDate()">
+            <div id="editHariOrderDisplay" class="text-muted mt-1" style="font-size: 0.72rem;"></div>
           </div>
           <div class="col-6">
             <label class="form-label small fw-semibold mb-1">Pesanan Ready</label>
@@ -981,8 +1082,8 @@
             <input type="number" class="form-control form-control-sm" id="editQty" value="${curQty}" min="1" required oninput="hitungEditTotal()">
           </div>
           <div class="col-4">
-            <label class="form-label small fw-semibold mb-1">Harga Asli / pcs</label>
-            <input type="number" class="form-control form-control-sm" id="editHarga" value="${o.hargaProduk || 0}" min="0" required oninput="hitungEditTotal()">
+            <label class="form-label small fw-semibold mb-1">Harga Item / Pcs</label>
+            <input type="number" class="form-control form-control-sm ${isTiramisusu ? 'bg-light' : ''}" id="editHarga" value="${o.hargaProduk || 0}" min="0" required ${isTiramisusu ? 'readonly' : ''} oninput="hitungEditTotal()">
           </div>
           <div class="col-4">
             <label class="form-label small fw-semibold mb-1">Fee / pcs</label>
@@ -1020,6 +1121,7 @@
       </form>
     `;
     editModalEl.show();
+    updateEditReadyDate();
     hitungEditTotal();
   }
 
@@ -1035,6 +1137,13 @@
     const hargaJual = harga + feePerPcs;
     const totalTagihan = (harga * qty) + (feePerPcs * qty);
 
+    let varian = '';
+    if (brand === 'Tiramisusu') {
+      varian = document.getElementById('editVarianTiramisusu').value;
+    } else {
+      varian = document.getElementById('editVarianManual').value;
+    }
+
     const payload = new URLSearchParams();
     payload.append('action', 'editOrder');
     payload.append('rowIndex', currentEditOrder.rowIndex);
@@ -1042,7 +1151,7 @@
     payload.append('alamatCod', document.getElementById('editCod').value);
     payload.append('tokoPesanan', brand);
     payload.append('lokasiToko', document.getElementById('editReady').value || "-");
-    payload.append('varianProduk', document.getElementById('editVarian').value);
+    payload.append('varianProduk', varian);
     payload.append('batchJastip', document.getElementById('editTanggalOrder').value);
     payload.append('dayaTahan', document.getElementById('editDayaTahan').value);
     payload.append('qty', qty);
@@ -1180,7 +1289,7 @@
         <td><div class="fw-semibold">${o.tokoPesanan || '-'}</div></td>
         <td>
           <span class="badge bg-primary-subtle text-primary border px-2 py-1">
-            ${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Varian Rasa'}
+            ${o.varianProduk && o.varianProduk !== '-' ? o.varianProduk : 'Original'}
           </span>
         </td>
         <td>
@@ -1210,7 +1319,7 @@
       showCustomAlert('Pemberitahuan', 'Belum ada data pesanan untuk diunduh.', 'ℹ️');
       return;
     }
-    const headers = ["No", "Timestamp", "Nama Customer", "Titik COD", "Toko Pesanan", "Pesanan Ready", "Varian Rasa", "Daya Tahan", "Tanggal Order", "Qty", "Harga Produk", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Order"];
+    const headers = ["No", "Timestamp", "Nama Customer", "Titik COD", "Toko Pesanan", "Pesanan Ready", "Varian Rasa", "Daya Tahan", "Tanggal Order", "Qty", "Harga Item", "Fee Jastip", "Harga Jual", "Total Tagihan", "Status Order"];
     const rows = orders.map((o, idx) => [
       idx + 1,
       `"${o.timestamp || ''}"`,
@@ -1240,7 +1349,7 @@
   }
 
   setAdminMode(false);
-  hitungTotal();
+  handleTokoChange();
 </script>
 </body>
 </html>
