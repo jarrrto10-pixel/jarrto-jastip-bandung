@@ -6,6 +6,8 @@
   <title>Jastipinyuk Bandung</title>
   <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Library html2pdf.js untuk Generate PDF Otomatis -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     body { background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1e293b; font-size: 0.82rem; }
     .card-custom { background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
@@ -22,14 +24,12 @@
       border-radius: 6px;
       display: inline-block;
     }
-    /* Accounting Payment Status Styles */
     .status-pay-Full-Payment { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
     .status-pay-Order-Only { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
     .status-pay-Fee-Only { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
     .status-pay-Unpaid { background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
     .status-pay-Refunded { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
-    /* Logistics Tracking Status Styles */
     .status-log-Order-Placed { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
     .status-log-Purchased { background-color: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
     .status-log-In-Transit { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
@@ -40,6 +40,17 @@
     .select-status-table { font-size: 0.75rem; padding: 2px 6px; font-weight: 600; border-radius: 6px; }
     .logo-clickable { cursor: pointer; transition: transform 0.15s; }
     .logo-clickable:active { transform: scale(0.92); }
+
+    /* Template Struk / Invoice PDF */
+    #invoicePdfTemplate {
+      display: none;
+      background: #ffffff;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      color: #1e293b;
+      max-width: 650px;
+      margin: 0 auto;
+    }
   </style>
 </head>
 <body class="py-3">
@@ -47,12 +58,10 @@
 <div class="container-fluid px-3 px-md-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
     <div class="d-flex align-items-center gap-2">
-      <!-- LOGO KLIK UNTUK MASUK MODE ADMIN -->
       <div id="appLogoBtn" class="logo-clickable" onclick="handleLogoAdminClick()" title="Klik untuk Login Admin" style="width: 38px; height: 38px; border-radius: 50%; background: #0d6efd; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1rem; user-select: none;">
         JB
       </div>
       <div>
-        <!-- JUDUL KLIK UNTUK KEMBALI KE FORM CUSTOMER / TOGGLE TAMPILAN -->
         <h4 class="fw-bold mb-0 text-primary" id="appTitle" onclick="handleTitleToggleView()" style="cursor: pointer; user-select: none;" title="Klik untuk beralih tampilan Form / Monitoring">Jastipinyuk Bandung</h4>
         <p class="text-muted small mb-0 d-none" id="appSubtitle" style="font-size: 0.75rem;">Pencatatan Pesanan & Monitoring <span id="adminBadge" class="badge bg-dark ms-1 d-none"></span></p>
       </div>
@@ -95,22 +104,25 @@
             </div>
           </div>
 
-          <!-- CONTAINER VARIAN RASA (TIRAMISUSU & BOLU SUSU LEMBANG DROPDOWN) -->
+          <!-- CONTAINER VARIAN RASA -->
           <div class="mb-2" id="varianContainer">
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
-            <!-- Dropdown Varian Tiramisusu -->
             <select class="form-select" id="varianTiramisusuSelect" onchange="handleTiramisusuVarianChange()">
               <option value="Original" data-harga="89000">Original</option>
               <option value="Cookies n Cream" data-harga="89000">Cookies n Cream</option>
               <option value="Matcha" data-harga="99000">Matcha</option>
               <option value="Pistachio Kunafa" data-harga="119000">Pistachio Kunafa</option>
             </select>
-            <!-- Dropdown Varian Bolu Susu Lembang -->
+            
+            <!-- Opsi Pancake / Bukan Pancake pada Bolu Susu Lembang -->
             <select class="form-select d-none" id="varianBoluLembangSelect" onchange="handleBoluLembangVarianChange()">
               <option value="Pancake Coklat" data-harga="27000">Pancake Coklat</option>
               <option value="Pancake Keju" data-harga="27000">Pancake Keju</option>
+              <option value="LAINNYA" data-harga="0">Lainnya / Bukan Pancake (Ketik Manual)</option>
             </select>
-            <!-- Input Teks untuk brand lainnya -->
+            
+            <input type="text" class="form-control mt-1 d-none" id="varianBoluCustomText" placeholder="Ketik nama bolu / varian lain..." value="">
+
             <input type="text" class="form-control d-none" id="varianProdukManual" placeholder="Varian Rasa" value="Varian Rasa"
                    onclick="this.select()" 
                    onfocus="if(this.value==='Varian Rasa') this.value='';" 
@@ -171,10 +183,9 @@
     <!-- TABEL MONITORING (MODE ADMIN & SUPERADMIN) -->
     <div id="adminPanel" class="col-12 d-none">
       <div class="card-custom p-3">
-        <!-- RINGKASAN FINANSIAL TERSTRUKTUR (KHUSUS SUPERADMIN) -->
+        <!-- RINGKASAN FINANSIAL -->
         <div id="summaryFinanceRow" class="mb-3">
           <div class="row g-2">
-            <!-- Kolom 1: Full Payment & Payment Order Only -->
             <div class="col-md-4">
               <div class="summary-card mb-2 border-success-subtle bg-success-subtle">
                 <span class="text-success-emphasis fw-semibold d-block" style="font-size: 0.72rem;">✅ Total Full Payment</span>
@@ -188,7 +199,6 @@
               </div>
             </div>
 
-            <!-- Kolom 2: Fee Lunas & Fee Belum Lunas -->
             <div class="col-md-4">
               <div class="summary-card mb-2 border-primary-subtle bg-primary-subtle">
                 <span class="text-primary-emphasis fw-semibold d-block" style="font-size: 0.72rem;">💵 Total Fee Lunas</span>
@@ -202,7 +212,6 @@
               </div>
             </div>
 
-            <!-- Kolom 3: Pendapatan Terkumpul (Qty x Harga Produk) & Fee Keseluruhan -->
             <div class="col-md-4">
               <div class="summary-card mb-2 border-dark-subtle bg-white">
                 <span class="text-dark fw-semibold d-block" style="font-size: 0.72rem;">🏦 Total Pendapatan Terkumpul</span>
@@ -276,7 +285,82 @@
   </div>
 </div>
 
-<!-- MODAL NOTIFIKASI UMUM (AUTO-DISMISS 1.5 DETIK) -->
+<!-- TEMPLATE CETAK INVOICE / PDF DI BELAKANG LAYAR -->
+<div id="invoicePdfTemplate">
+  <div style="border-bottom: 2px solid #0d6efd; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h3 style="margin: 0; color: #0d6efd; font-weight: bold;">Jastipinyuk Bandung</h3>
+      <p style="margin: 2px 0 0; font-size: 11px; color: #64748b;">Layanan Jasa Titip Oleh-Oleh Bandung Terpercaya</p>
+    </div>
+    <div style="text-align: right;">
+      <h4 style="margin: 0; color: #1e293b;">INVOICE</h4>
+      <p style="margin: 2px 0 0; font-size: 11px; color: #64748b;" id="invNumber">INV/2026/001</p>
+    </div>
+  </div>
+
+  <table style="width: 100%; font-size: 12px; margin-bottom: 16px;">
+    <tr>
+      <td style="width: 50%; vertical-align: top;">
+        <strong>Ditujukan Kepada:</strong><br>
+        <span id="invCustName" style="font-size: 13px; font-weight: bold; color: #0f172a;">-</span><br>
+        Alamat: <span id="invCustAddress">-</span>
+      </td>
+      <td style="width: 50%; text-align: right; vertical-align: top;">
+        <strong>Tanggal Order:</strong> <span id="invDate">-</span><br>
+        <strong>Estimasi Ready:</strong> <span id="invReadyDate">-</span><br>
+        <strong>Status Pembayaran:</strong> <span id="invPayStatus" style="font-weight: bold;">-</span>
+      </td>
+    </tr>
+  </table>
+
+  <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;">
+    <thead>
+      <tr style="background-color: #f1f5f9; border-bottom: 1px solid #cbd5e1; text-align: left;">
+        <th style="padding: 8px;">Deskripsi Item & Toko</th>
+        <th style="padding: 8px; text-align: center;">Qty</th>
+        <th style="padding: 8px; text-align: right;">Harga Asli</th>
+        <th style="padding: 8px; text-align: right;">Fee Jastip</th>
+        <th style="padding: 8px; text-align: right;">Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 10px 8px;">
+          <strong id="invToko">-</strong><br>
+          <span id="invVarian" style="color: #475569; font-size: 11px;">-</span>
+        </td>
+        <td style="padding: 10px 8px; text-align: center;" id="invQty">1</td>
+        <td style="padding: 10px 8px; text-align: right;" id="invItemPrice">Rp 0</td>
+        <td style="padding: 10px 8px; text-align: right;" id="invFeePrice">Rp 0</td>
+        <td style="padding: 10px 8px; text-align: right; font-weight: bold;" id="invSubtotal">Rp 0</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+    <table style="width: 280px; font-size: 12px;">
+      <tr>
+        <td style="padding: 4px 0;">Total Harga Item:</td>
+        <td style="padding: 4px 0; text-align: right;" id="invSumItem">Rp 0</td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 0;">Total Fee Jastip:</td>
+        <td style="padding: 4px 0; text-align: right;" id="invSumFee">Rp 0</td>
+      </tr>
+      <tr style="border-top: 1px solid #cbd5e1; font-weight: bold; font-size: 13px;">
+        <td style="padding: 8px 0; color: #0d6efd;">TOTAL TAGIHAN:</td>
+        <td style="padding: 8px 0; text-align: right; color: #0d6efd;" id="invGrandTotal">Rp 0</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="border-top: 1px dashed #cbd5e1; padding-top: 12px; font-size: 11px; color: #64748b; text-align: center;">
+    <p style="margin: 0;">Terima kasih telah berbelanja melalui Jastipinyuk Bandung!</p>
+    <p style="margin: 3px 0 0;">Mohon sertakan bukti transfer saat melakukan pembayaran.</p>
+  </div>
+</div>
+
+<!-- MODAL NOTIFIKASI UMUM -->
 <div class="modal fade" id="customAlertModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-sm">
     <div class="modal-content text-center p-3">
@@ -312,102 +396,6 @@
         </div>
         <div id="loginError" class="alert alert-danger py-1 px-2 small d-none mb-2">Username atau passcode salah!</div>
         <button type="button" id="loginBtn" class="btn btn-primary btn-sm w-100 fw-semibold" onclick="processLogin()">Masuk</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL KELOLA ADMIN & SUPERADMIN -->
-<div class="modal fade" id="manageAdminModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header py-2">
-        <h6 class="modal-title fw-bold">Kelola Admin</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body p-3">
-        <div class="row g-3">
-          <div class="col-md-5 border-end">
-            <h6 class="fw-bold mb-2 small text-primary">Tambah Admin</h6>
-            <form id="addAdminForm" onsubmit="event.preventDefault(); createNewAdmin();">
-              <div class="mb-2">
-                <label class="form-label small mb-1 fw-semibold">Username</label>
-                <input type="text" class="form-control form-control-sm" id="newUsername" required placeholder="User login">
-              </div>
-              <div class="mb-2">
-                <label class="form-label small mb-1 fw-semibold">Passcode</label>
-                <div class="input-group input-group-sm">
-                  <input type="password" class="form-control" id="newPasscode" required placeholder="Kode sandi">
-                  <button class="btn btn-outline-secondary" type="button" onclick="togglePassVisibility('newPasscode', this)">👁️</button>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label small mb-1 fw-semibold">Role / Hak Akses</label>
-                <select class="form-select form-select-sm" id="newRole">
-                  <option value="admin">Admin</option>
-                  <option value="superadmin">Superadmin</option>
-                </select>
-                <span class="text-muted" style="font-size: 0.7rem;">Admin tidak bisa melihat omzet/hapus pesanan.</span>
-              </div>
-              <button type="submit" id="btnAddAdmin" class="btn btn-primary btn-sm w-100 fw-semibold">Tambah</button>
-            </form>
-          </div>
-
-          <div class="col-md-7">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="fw-bold mb-0 small text-primary">Daftar Admin Aktif</h6>
-              <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="fetchAdminsFromCloud()">🔄 Refresh</button>
-            </div>
-            <div class="table-responsive" style="max-height: 260px;">
-              <table class="table table-sm table-bordered align-middle mb-0">
-                <thead class="table-light">
-                  <tr style="font-size: 0.72rem;">
-                    <th>User</th>
-                    <th>Role</th>
-                    <th>Passcode</th>
-                    <th class="text-center">ACTION</th>
-                  </tr>
-                </thead>
-                <tbody id="adminListTable">
-                  <tr><td colspan="4" class="text-center py-2 text-muted">Memuat akun dari sheet...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL EDIT AKUN -->
-<div class="modal fade" id="editAdminModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-sm">
-    <div class="modal-content">
-      <div class="modal-header py-2">
-        <h6 class="modal-title fw-bold">Edit Akun</h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body p-3">
-        <div class="mb-2">
-          <label class="form-label small mb-1 fw-semibold">Username</label>
-          <input type="text" class="form-control form-control-sm bg-light" id="editAdminUsername" readonly>
-        </div>
-        <div class="mb-2">
-          <label class="form-label small mb-1 fw-semibold">Passcode Baru</label>
-          <div class="input-group input-group-sm">
-            <input type="password" class="form-control" id="editAdminPasscode" required>
-            <button class="btn btn-outline-secondary" type="button" onclick="togglePassVisibility('editAdminPasscode', this)">👁️</button>
-          </div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label small mb-1 fw-semibold">Role</label>
-          <select class="form-select form-select-sm" id="editAdminRole">
-            <option value="admin">Admin</option>
-            <option value="superadmin">Superadmin</option>
-          </select>
-        </div>
-        <button type="button" id="btnSaveAdminEdit" class="btn btn-primary btn-sm w-100 fw-semibold" onclick="saveEditedAdminAccount()">Simpan</button>
       </div>
     </div>
   </div>
@@ -476,8 +464,6 @@
   const previewModalEl = new bootstrap.Modal(document.getElementById('previewModal'));
   const editModalEl = new bootstrap.Modal(document.getElementById('editModal'));
   const deleteModalEl = new bootstrap.Modal(document.getElementById('deleteModal'));
-  const manageAdminModalEl = new bootstrap.Modal(document.getElementById('manageAdminModal'));
-  const editAdminModalEl = new bootstrap.Modal(document.getElementById('editAdminModal'));
   const customAlertModalEl = new bootstrap.Modal(document.getElementById('customAlertModal'));
 
   function showCustomAlert(title, message, icon = '✅', duration = 1500) {
@@ -495,7 +481,6 @@
     }
   }
 
-  // Klik logo untuk login admin
   function handleLogoAdminClick() {
     if (!currentLoggedInAdmin) {
       document.getElementById('adminUser').value = '';
@@ -508,7 +493,6 @@
     }
   }
 
-  // Klik judul: jika dalam mode admin, switch tampilan antara form customer dan panel monitoring
   function handleTitleToggleView() {
     if (!currentLoggedInAdmin) return;
     const formContainer = document.getElementById('formContainer');
@@ -605,13 +589,16 @@
     document.getElementById('editReady').value = res.formatted;
   }
 
-  // Handle pergantian brand toko: Tiramisusu & Bolu Susu Lembang mendapatkan dropdown khusus
+  // Handle pergantian brand toko: Tiramisusu & Bolu Susu Lembang
   function handleTokoChange() {
     const toko = document.getElementById('tokoPesanan').value;
     const tiramisusuSelect = document.getElementById('varianTiramisusuSelect');
     const boluLembangSelect = document.getElementById('varianBoluLembangSelect');
+    const boluCustomInput = document.getElementById('varianBoluCustomText');
     const textEl = document.getElementById('varianProdukManual');
     const hargaDisplayEl = document.getElementById('hargaProdukDisplay');
+
+    boluCustomInput.classList.add('d-none');
 
     if (toko === 'Tiramisusu') {
       tiramisusuSelect.classList.remove('d-none');
@@ -657,15 +644,25 @@
   function handleBoluLembangVarianChange() {
     const selectEl = document.getElementById('varianBoluLembangSelect');
     const selectedOption = selectEl.options[selectEl.selectedIndex];
-    const harga = parseInt(selectedOption.getAttribute('data-harga')) || 27000;
-    
+    const customInput = document.getElementById('varianBoluCustomText');
     const hargaDisplayEl = document.getElementById('hargaProdukDisplay');
     const hargaValEl = document.getElementById('hargaProduk');
 
-    hargaValEl.value = harga;
-    hargaDisplayEl.value = 'Rp ' + Number(harga).toLocaleString('id-ID');
-    hargaDisplayEl.readOnly = true;
-    hargaDisplayEl.classList.add('bg-light');
+    if (selectEl.value === 'LAINNYA') {
+      customInput.classList.remove('d-none');
+      customInput.focus();
+      hargaDisplayEl.readOnly = false;
+      hargaDisplayEl.classList.remove('bg-light');
+      hargaValEl.value = '0';
+      hargaDisplayEl.value = 'Rp 0';
+    } else {
+      customInput.classList.add('d-none');
+      const harga = parseInt(selectedOption.getAttribute('data-harga')) || 27000;
+      hargaValEl.value = harga;
+      hargaDisplayEl.value = 'Rp ' + Number(harga).toLocaleString('id-ID');
+      hargaDisplayEl.readOnly = true;
+      hargaDisplayEl.classList.add('bg-light');
+    }
     hitungTotal();
   }
 
@@ -713,7 +710,6 @@
       .then(data => {
         if (Array.isArray(data)) {
           cloudAdmins = data;
-          renderAdminTable();
           if (callback) callback(true);
         }
       })
@@ -836,157 +832,6 @@
     }
   }
 
-  function openManageAdminModal() {
-    if (!currentLoggedInAdmin || currentLoggedInAdmin.role !== 'superadmin') {
-      showCustomAlert('Akses Ditolak', 'Hanya Superadmin yang dapat mengelola akun!', '🚫');
-      return;
-    }
-    fetchAdminsFromCloud();
-    manageAdminModalEl.show();
-  }
-
-  function renderAdminTable() {
-    const tbody = document.getElementById('adminListTable');
-    tbody.innerHTML = '';
-
-    cloudAdmins.forEach((acc, i) => {
-      const isSuper = acc.role === 'superadmin';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="fw-semibold">${acc.user}</td>
-        <td><span class="badge ${isSuper ? 'bg-danger' : 'bg-secondary'}">${acc.role}</span></td>
-        <td>
-          <span id="passSpan_${i}">••••••••</span>
-          <button class="btn btn-sm btn-link p-0 text-decoration-none ms-1" title="Lihat Passcode" onclick="toggleViewTablePass(${i}, '${acc.pass}')">👁️</button>
-        </td>
-        <td class="text-center">
-          <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-primary py-0 px-2" title="Edit Akun" onclick="openEditAdminModal(${i})">✏️</button>
-            ${cloudAdmins.length > 1 ? `<button class="btn btn-outline-danger py-0 px-2" title="Hapus Akun" onclick="deleteAdminAccount('${acc.user}')">🗑️</button>` : ''}
-          </div>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  function toggleViewTablePass(idx, realPass) {
-    const el = document.getElementById(`passSpan_${idx}`);
-    if (el.innerText === '••••••••') {
-      el.innerText = realPass;
-    } else {
-      el.innerText = '••••••••';
-    }
-  }
-
-  function createNewAdmin() {
-    const u = document.getElementById('newUsername').value.trim();
-    const p = document.getElementById('newPasscode').value.trim();
-    const r = document.getElementById('newRole').value;
-    const btn = document.getElementById('btnAddAdmin');
-
-    if (cloudAdmins.some(a => a.user.toLowerCase() === u.toLowerCase())) {
-      showCustomAlert('Peringatan', 'Username sudah terdaftar di database!', '⚠️');
-      return;
-    }
-
-    btn.disabled = true;
-    btn.innerText = 'Menyimpan...';
-
-    const payload = new URLSearchParams();
-    payload.append('action', 'addAdmin');
-    payload.append('user', u);
-    payload.append('pass', p);
-    payload.append('role', r);
-
-    fetch(SCRIPT_URL, { method: 'POST', body: payload })
-      .then(() => {
-        document.getElementById('addAdminForm').reset();
-        manageAdminModalEl.hide();
-        fetchAdminsFromCloud();
-        showCustomAlert('Sukses', `Admin baru "${u}" (${r}) berhasil ditambahkan!`, '✅');
-      })
-      .catch(() => {
-        showCustomAlert('Gagal', 'Gagal menambahkan admin ke cloud.', '⚠️');
-      })
-      .finally(() => {
-        btn.disabled = false;
-        btn.innerText = 'Tambah';
-      });
-  }
-
-  function openEditAdminModal(idx) {
-    const acc = cloudAdmins[idx];
-    if (!acc) return;
-
-    document.getElementById('editAdminUsername').value = acc.user;
-    document.getElementById('editAdminPasscode').value = acc.pass;
-    document.getElementById('editAdminRole').value = acc.role;
-
-    manageAdminModalEl.hide();
-    editAdminModalEl.show();
-  }
-
-  function saveEditedAdminAccount() {
-    const u = document.getElementById('editAdminUsername').value;
-    const newPass = document.getElementById('editAdminPasscode').value.trim();
-    const newRole = document.getElementById('editAdminRole').value;
-    const btn = document.getElementById('btnSaveAdminEdit');
-
-    if (!newPass) {
-      showCustomAlert('Peringatan', 'Passcode tidak boleh kosong!', '⚠️');
-      return;
-    }
-
-    btn.disabled = true;
-    btn.innerText = 'Menyimpan...';
-
-    const payload = new URLSearchParams();
-    payload.append('action', 'updateAdmin');
-    payload.append('user', u);
-    payload.append('newPass', newPass);
-    payload.append('newRole', newRole);
-
-    fetch(SCRIPT_URL, { method: 'POST', body: payload })
-      .then(() => {
-        if (currentLoggedInAdmin.user === u) {
-          currentLoggedInAdmin.pass = newPass;
-          currentLoggedInAdmin.role = newRole;
-          setAdminMode(true);
-        }
-        editAdminModalEl.hide();
-        fetchAdminsFromCloud();
-        showCustomAlert('Berhasil', 'Akun berhasil diperbarui!', '✅');
-      })
-      .catch(() => {
-        showCustomAlert('Gagal', 'Gagal mengupdate akun admin ke cloud.', '⚠️');
-      })
-      .finally(() => {
-        btn.disabled = false;
-        btn.innerText = 'Simpan';
-      });
-  }
-
-  function deleteAdminAccount(username) {
-    if (username === currentLoggedInAdmin.user) {
-      showCustomAlert('Ditolak', 'Anda tidak bisa menghapus akun yang sedang Anda gunakan!', '🚫');
-      return;
-    }
-
-    const payload = new URLSearchParams();
-    payload.append('action', 'deleteAdmin');
-    payload.append('user', username);
-
-    fetch(SCRIPT_URL, { method: 'POST', body: payload })
-      .then(() => {
-        fetchAdminsFromCloud();
-        showCustomAlert('Dihapus', `Akun "${username}" berhasil dihapus.`, '🗑️');
-      })
-      .catch(() => {
-        showCustomAlert('Gagal', 'Gagal menghapus akun dari cloud.', '⚠️');
-      });
-  }
-
   function fetchOrders() {
     if (!currentLoggedInAdmin) return;
     const tbody = document.getElementById('tableBody');
@@ -1038,7 +883,6 @@
     return `badge-status status-log-${safe}`;
   }
 
-  // Quick Update Status Langsung dari Baris Tabel (Khusus Superadmin)
   function updateSingleStatusDirect(rowIndex, fieldName, newVal) {
     const targetOrder = orders.find(o => o.rowIndex == rowIndex);
     if (!targetOrder) return;
@@ -1114,7 +958,12 @@
     if (brand === 'Tiramisusu') {
       varian = document.getElementById('varianTiramisusuSelect').value;
     } else if (brand === 'Bolu Susu Lembang') {
-      varian = document.getElementById('varianBoluLembangSelect').value;
+      const boluVal = document.getElementById('varianBoluLembangSelect').value;
+      if (boluVal === 'LAINNYA') {
+        varian = document.getElementById('varianBoluCustomText').value.trim() || 'Bolu Susu Lembang';
+      } else {
+        varian = boluVal;
+      }
     } else {
       varian = document.getElementById('varianProdukManual').value;
     }
@@ -1166,6 +1015,53 @@
     });
   });
 
+  // FUNGSI BUAT INVOICE PDF INSTAN PER CUSTOMER
+  function generateInvoicePDF(idx) {
+    const o = orders[idx];
+    if (!o) return;
+
+    const readyText = getCleanReadyText(o.lokasiToko, o.batchJastip);
+    const orderDateRes = calculateReadyDate(o.batchJastip);
+    const payStatus = normalizePaymentStatus(o.statusOrder);
+    const qty = Number(o.qty) || 1;
+    const hargaProduk = Number(o.hargaProduk) || 0;
+    const feeJastip = Number(o.feeJastip) || 0;
+    const subtotal = (hargaProduk + feeJastip) * qty;
+
+    // Masukkan data ke template invoice
+    document.getElementById('invNumber').innerText = `INV-${new Date().getFullYear()}-${String(idx + 1).padStart(4, '0')}`;
+    document.getElementById('invCustName').innerText = o.namaCustomer || '-';
+    document.getElementById('invCustAddress').innerText = o.alamatCod || '-';
+    document.getElementById('invDate').innerText = orderDateRes.formattedFull || formatCleanDate(o.batchJastip);
+    document.getElementById('invReadyDate').innerText = readyText || '-';
+    document.getElementById('invPayStatus').innerText = payStatus;
+    document.getElementById('invToko').innerText = o.tokoPesanan || '-';
+    document.getElementById('invVarian').innerText = `Varian: ${o.varianProduk || '-'}`;
+    document.getElementById('invQty').innerText = `${qty} pcs`;
+    document.getElementById('invItemPrice').innerText = 'Rp ' + hargaProduk.toLocaleString('id-ID');
+    document.getElementById('invFeePrice').innerText = 'Rp ' + feeJastip.toLocaleString('id-ID');
+    document.getElementById('invSubtotal').innerText = 'Rp ' + subtotal.toLocaleString('id-ID');
+    document.getElementById('invSumItem').innerText = 'Rp ' + (hargaProduk * qty).toLocaleString('id-ID');
+    document.getElementById('invSumFee').innerText = 'Rp ' + (feeJastip * qty).toLocaleString('id-ID');
+    document.getElementById('invGrandTotal').innerText = 'Rp ' + subtotal.toLocaleString('id-ID');
+
+    const element = document.getElementById('invoicePdfTemplate');
+    element.style.display = 'block';
+
+    const opt = {
+      margin:       10,
+      filename:     `Invoice_${(o.namaCustomer || 'Customer').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2 },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
+      element.style.display = 'none';
+      showCustomAlert('Invoice Siap', 'File PDF invoice berhasil diunduh!', '📥', 1500);
+    });
+  }
+
   function showPreview(idx) {
     const o = orders[idx];
     if (!o) return;
@@ -1195,6 +1091,9 @@
         <li class="list-group-item d-flex justify-content-between p-2"><span>Order Tracking:</span> <span class="${getLogisticsBadgeClass(logStatus)}">${logStatus}</span></li>
         <li class="list-group-item d-flex justify-content-between p-2 bg-light"><span>Total Tagihan:</span> <strong class="text-primary fs-6">Rp ${Number(o.totalTagihan || 0).toLocaleString('id-ID')}</strong></li>
       </ul>
+      <div class="mt-3">
+        <button class="btn btn-outline-success btn-sm w-100 fw-semibold" onclick="generateInvoicePDF(${idx})">🧾 Buat Invoice PDF</button>
+      </div>
     `;
     previewModalEl.show();
   }
@@ -1205,7 +1104,6 @@
     const selectBolu = document.getElementById('editVarianBolu');
     const textEl = document.getElementById('editVarianManual');
     const hargaDisplayEl = document.getElementById('editHargaDisplay');
-    const hargaValEl = document.getElementById('editHarga');
 
     if (toko === 'Tiramisusu') {
       selectTiramisusu.classList.remove('d-none');
@@ -1244,16 +1142,26 @@
 
   function handleEditBoluVarianChange() {
     const selectEl = document.getElementById('editVarianBolu');
-    const selectedOption = selectEl.options[selectEl.selectedIndex];
-    const harga = parseInt(selectedOption.getAttribute('data-harga')) || 27000;
-    
+    const customInput = document.getElementById('editVarianManual');
     const hargaDisplayEl = document.getElementById('editHargaDisplay');
     const hargaValEl = document.getElementById('editHarga');
 
-    hargaValEl.value = harga;
-    hargaDisplayEl.value = 'Rp ' + Number(harga).toLocaleString('id-ID');
-    hargaDisplayEl.readOnly = true;
-    hargaDisplayEl.classList.add('bg-light');
+    if (selectEl.value === 'LAINNYA') {
+      customInput.classList.remove('d-none');
+      customInput.focus();
+      hargaDisplayEl.readOnly = false;
+      hargaDisplayEl.classList.remove('bg-light');
+      hargaValEl.value = '0';
+      hargaDisplayEl.value = 'Rp 0';
+    } else {
+      customInput.classList.add('d-none');
+      const selectedOption = selectEl.options[selectEl.selectedIndex];
+      const harga = parseInt(selectedOption.getAttribute('data-harga')) || 27000;
+      hargaValEl.value = harga;
+      hargaDisplayEl.value = 'Rp ' + Number(harga).toLocaleString('id-ID');
+      hargaDisplayEl.readOnly = true;
+      hargaDisplayEl.classList.add('bg-light');
+    }
     hitungEditTotal();
   }
 
@@ -1341,8 +1249,9 @@
             <select class="form-select form-select-sm ${!isBolu ? 'd-none' : ''}" id="editVarianBolu" onchange="handleEditBoluVarianChange()">
               <option value="Pancake Coklat" data-harga="27000" ${o.varianProduk === 'Pancake Coklat' ? 'selected' : ''}>Pancake Coklat</option>
               <option value="Pancake Keju" data-harga="27000" ${o.varianProduk === 'Pancake Keju' ? 'selected' : ''}>Pancake Keju</option>
+              <option value="LAINNYA" data-harga="0">Lainnya / Bukan Pancake (Ketik Manual)</option>
             </select>
-            <input type="text" class="form-control form-control-sm ${(isTiramisusu || isBolu) ? 'd-none' : ''}" id="editVarianManual" value="${o.varianProduk || 'Varian Rasa'}" onclick="this.select()">
+            <input type="text" class="form-control form-control-sm ${(isTiramisusu || (isBolu && (o.varianProduk === 'Pancake Coklat' || o.varianProduk === 'Pancake Keju'))) ? 'd-none' : ''}" id="editVarianManual" value="${o.varianProduk || 'Varian Rasa'}" onclick="this.select()">
           </div>
         </div>
         <div class="row g-2 mb-2">
@@ -1364,7 +1273,7 @@
           </div>
           <div class="col-4">
             <label class="form-label small fw-semibold mb-1">Harga Item / Pcs</label>
-            <input type="text" class="form-control form-control-sm ${(isTiramisusu || isBolu) ? 'bg-light' : ''} fw-semibold" id="editHargaDisplay" value="Rp ${currentPrice.toLocaleString('id-ID')}" ${(isTiramisusu || isBolu) ? 'readonly' : ''} oninput="handleEditManualHargaInput(this)">
+            <input type="text" class="form-control form-control-sm ${(isTiramisusu || (isBolu && (o.varianProduk === 'Pancake Coklat' || o.varianProduk === 'Pancake Keju'))) ? 'bg-light' : ''} fw-semibold" id="editHargaDisplay" value="Rp ${currentPrice.toLocaleString('id-ID')}" ${(isTiramisusu || (isBolu && (o.varianProduk === 'Pancake Coklat' || o.varianProduk === 'Pancake Keju'))) ? 'readonly' : ''} oninput="handleEditManualHargaInput(this)">
             <input type="hidden" id="editHarga" value="${currentPrice}">
           </div>
           <div class="col-4">
@@ -1432,7 +1341,12 @@
     if (brand === 'Tiramisusu') {
       varian = document.getElementById('editVarianTiramisusu').value;
     } else if (brand === 'Bolu Susu Lembang') {
-      varian = document.getElementById('editVarianBolu').value;
+      const bVal = document.getElementById('editVarianBolu').value;
+      if (bVal === 'LAINNYA') {
+        varian = document.getElementById('editVarianManual').value.trim() || 'Bolu Susu Lembang';
+      } else {
+        varian = bVal;
+      }
     } else {
       varian = document.getElementById('editVarianManual').value;
     }
@@ -1534,7 +1448,7 @@
     let sumFeeLunasVal = 0;
     let sumFeeBelumLunasVal = 0;
     let sumTotalFeeKeseluruhan = 0;
-    let sumTotalModalAsliKeseluruhan = 0; // Rumus: Qty * Harga Produk Asli
+    let sumTotalModalAsliKeseluruhan = 0;
 
     const filtered = orders.filter(o => {
       const nama = String(o.namaCustomer || '').toLowerCase();
@@ -1608,7 +1522,6 @@
       const payStatus = normalizePaymentStatus(o.statusOrder);
       const logStatus = normalizeLogisticsStatus(o.statusFulfillment || o.statusOrder, payStatus);
 
-      // Superadmin: Inline Quick Dropdown langsung di tabel
       const paymentCellHtml = isSuperAdmin ? `
         <select class="form-select form-select-sm select-status-table ${getPaymentBadgeClass(payStatus)}" 
                 onchange="updateSingleStatusDirect(${o.rowIndex}, 'statusOrder', this.value)">
@@ -1655,6 +1568,7 @@
         <td>${trackingCellHtml}</td>
         <td>
           <div class="btn-group" role="group">
+            <button class="btn btn-outline-success btn-sm py-0 px-2" title="Unduh Invoice PDF" onclick="generateInvoicePDF(${index})">🧾</button>
             <button class="btn btn-outline-secondary btn-sm py-0 px-2" title="Lihat Detail" onclick="showPreview(${index})">👁️</button>
             <button class="btn btn-outline-primary btn-sm py-0 px-2" title="Edit Pesanan" onclick="directEditOrder(${index})">✏️</button>
             ${isSuperAdmin ? `<button class="btn btn-outline-danger btn-sm py-0 px-2" title="Hapus Pesanan" onclick="openDeleteModal(${index})">🗑️</button>` : ''}
