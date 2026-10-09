@@ -58,10 +58,12 @@
 <div class="container-fluid px-3 px-md-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
     <div class="d-flex align-items-center gap-2">
+      <!-- LOGO KLIK UNTUK MASUK MODE ADMIN -->
       <div id="appLogoBtn" class="logo-clickable" onclick="handleLogoAdminClick()" title="Klik untuk Login Admin" style="width: 38px; height: 38px; border-radius: 50%; background: #0d6efd; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1rem; user-select: none;">
         JB
       </div>
       <div>
+        <!-- JUDUL KLIK UNTUK KEMBALI KE FORM CUSTOMER / TOGGLE TAMPILAN -->
         <h4 class="fw-bold mb-0 text-primary" id="appTitle" onclick="handleTitleToggleView()" style="cursor: pointer; user-select: none;" title="Klik untuk beralih tampilan Form / Monitoring">Jastipinyuk Bandung</h4>
         <p class="text-muted small mb-0 d-none" id="appSubtitle" style="font-size: 0.75rem;">Pencatatan Pesanan & Monitoring <span id="adminBadge" class="badge bg-dark ms-1 d-none"></span></p>
       </div>
@@ -114,11 +116,11 @@
               <option value="Pistachio Kunafa" data-harga="119000">Pistachio Kunafa</option>
             </select>
             
-            <!-- Opsi Pancake / Bukan Pancake pada Bolu Susu Lembang -->
+            <!-- Opsi Pancake / Bukan Pancake pada Bolu Susu Lembang (Lainnya) -->
             <select class="form-select d-none" id="varianBoluLembangSelect" onchange="handleBoluLembangVarianChange()">
               <option value="Pancake Coklat" data-harga="27000">Pancake Coklat</option>
               <option value="Pancake Keju" data-harga="27000">Pancake Keju</option>
-              <option value="LAINNYA" data-harga="0">Lainnya / Bukan Pancake (Ketik Manual)</option>
+              <option value="LAINNYA" data-harga="0">Lainnya</option>
             </select>
             
             <input type="text" class="form-control mt-1 d-none" id="varianBoluCustomText" placeholder="Ketik nama bolu / varian lain..." value="">
@@ -401,6 +403,102 @@
   </div>
 </div>
 
+<!-- MODAL KELOLA ADMIN & SUPERADMIN -->
+<div class="modal fade" id="manageAdminModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title fw-bold">Kelola Admin</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="row g-3">
+          <div class="col-md-5 border-end">
+            <h6 class="fw-bold mb-2 small text-primary">Tambah Admin</h6>
+            <form id="addAdminForm" onsubmit="event.preventDefault(); createNewAdmin();">
+              <div class="mb-2">
+                <label class="form-label small mb-1 fw-semibold">Username</label>
+                <input type="text" class="form-control form-control-sm" id="newUsername" required placeholder="User login">
+              </div>
+              <div class="mb-2">
+                <label class="form-label small mb-1 fw-semibold">Passcode</label>
+                <div class="input-group input-group-sm">
+                  <input type="password" class="form-control" id="newPasscode" required placeholder="Kode sandi">
+                  <button class="btn btn-outline-secondary" type="button" onclick="togglePassVisibility('newPasscode', this)">👁️</button>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label small mb-1 fw-semibold">Role / Hak Akses</label>
+                <select class="form-select form-select-sm" id="newRole">
+                  <option value="admin">Admin</option>
+                  <option value="superadmin">Superadmin</option>
+                </select>
+                <span class="text-muted" style="font-size: 0.7rem;">Admin tidak bisa melihat omzet/hapus pesanan.</span>
+              </div>
+              <button type="submit" id="btnAddAdmin" class="btn btn-primary btn-sm w-100 fw-semibold">Tambah</button>
+            </form>
+          </div>
+
+          <div class="col-md-7">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold mb-0 small text-primary">Daftar Admin Aktif</h6>
+              <button class="btn btn-link btn-sm p-0 text-decoration-none" onclick="fetchAdminsFromCloud()">🔄 Refresh</button>
+            </div>
+            <div class="table-responsive" style="max-height: 260px;">
+              <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-light">
+                  <tr style="font-size: 0.72rem;">
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Passcode</th>
+                    <th class="text-center">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="adminListTable">
+                  <tr><td colspan="4" class="text-center py-2 text-muted">Memuat akun dari sheet...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDIT AKUN -->
+<div class="modal fade" id="editAdminModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title fw-bold">Edit Akun</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="mb-2">
+          <label class="form-label small mb-1 fw-semibold">Username</label>
+          <input type="text" class="form-control form-control-sm bg-light" id="editAdminUsername" readonly>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small mb-1 fw-semibold">Passcode Baru</label>
+          <div class="input-group input-group-sm">
+            <input type="password" class="form-control" id="editAdminPasscode" required>
+            <button class="btn btn-outline-secondary" type="button" onclick="togglePassVisibility('editAdminPasscode', this)">👁️</button>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small mb-1 fw-semibold">Role</label>
+          <select class="form-select form-select-sm" id="editAdminRole">
+            <option value="admin">Admin</option>
+            <option value="superadmin">Superadmin</option>
+          </select>
+        </div>
+        <button type="button" id="btnSaveAdminEdit" class="btn btn-primary btn-sm w-100 fw-semibold" onclick="saveEditedAdminAccount()">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL VIEW DETAIL -->
 <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -453,7 +551,10 @@
 <script>
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzyzWSBP7AiSqerFcAB5xh6TNorQWe3iGsT-mrIttyXpu3H8hxxZ5BE82PhZ3euQ349/exec';
   
-  let cloudAdmins = [];
+  // Cache data admin awal agar verifikasi login instan (< 0.2 detik)
+  let cloudAdmins = [
+    { user: 'fajar', pass: '12345678', role: 'superadmin' }
+  ];
   let currentLoggedInAdmin = null;
   let orders = [];
   let currentEditOrder = null;
@@ -464,6 +565,8 @@
   const previewModalEl = new bootstrap.Modal(document.getElementById('previewModal'));
   const editModalEl = new bootstrap.Modal(document.getElementById('editModal'));
   const deleteModalEl = new bootstrap.Modal(document.getElementById('deleteModal'));
+  const manageAdminModalEl = new bootstrap.Modal(document.getElementById('manageAdminModal'));
+  const editAdminModalEl = new bootstrap.Modal(document.getElementById('editAdminModal'));
   const customAlertModalEl = new bootstrap.Modal(document.getElementById('customAlertModal'));
 
   function showCustomAlert(title, message, icon = '✅', duration = 1500) {
@@ -589,7 +692,6 @@
     document.getElementById('editReady').value = res.formatted;
   }
 
-  // Handle pergantian brand toko: Tiramisusu & Bolu Susu Lembang
   function handleTokoChange() {
     const toko = document.getElementById('tokoPesanan').value;
     const tiramisusuSelect = document.getElementById('varianTiramisusuSelect');
@@ -708,8 +810,9 @@
     fetch(`${SCRIPT_URL}?action=getAdmins`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           cloudAdmins = data;
+          renderAdminTable();
           if (callback) callback(true);
         }
       })
@@ -759,6 +862,7 @@
     }
   }
 
+  // Proses login cepat menggunakan cache lokal terlebih dahulu
   function processLogin() {
     const u = document.getElementById('adminUser').value.trim();
     const p = document.getElementById('adminPass').value.trim();
@@ -769,9 +873,21 @@
     btn.innerText = "Memverifikasi...";
     err.classList.add('d-none');
 
+    // Cek di memori lokal terlebih dahulu
+    const localMatch = cloudAdmins.find(a => a.user.toLowerCase() === u.toLowerCase() && a.pass === p);
+    if (localMatch) {
+      currentLoggedInAdmin = localMatch;
+      loginModalEl.hide();
+      setAdminMode(true);
+      btn.disabled = false;
+      btn.innerText = "Masuk";
+      fetchOrders();
+      return;
+    }
+
+    // Jika tidak ada di cache lokal, cek sinkronisasi cloud
     fetchAdminsFromCloud(() => {
       const match = cloudAdmins.find(a => a.user.toLowerCase() === u.toLowerCase() && a.pass === p);
-
       if (match) {
         currentLoggedInAdmin = match;
         loginModalEl.hide();
@@ -830,6 +946,158 @@
       subtitle.classList.add('d-none');
       badge.classList.add('d-none');
     }
+  }
+
+  function openManageAdminModal() {
+    if (!currentLoggedInAdmin || currentLoggedInAdmin.role !== 'superadmin') {
+      showCustomAlert('Akses Ditolak', 'Hanya Superadmin yang dapat mengelola akun!', '🚫');
+      return;
+    }
+    fetchAdminsFromCloud();
+    manageAdminModalEl.show();
+  }
+
+  function renderAdminTable() {
+    const tbody = document.getElementById('adminListTable');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    cloudAdmins.forEach((acc, i) => {
+      const isSuper = acc.role === 'superadmin';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="fw-semibold">${acc.user}</td>
+        <td><span class="badge ${isSuper ? 'bg-danger' : 'bg-secondary'}">${acc.role}</span></td>
+        <td>
+          <span id="passSpan_${i}">••••••••</span>
+          <button class="btn btn-sm btn-link p-0 text-decoration-none ms-1" title="Lihat Passcode" onclick="toggleViewTablePass(${i}, '${acc.pass}')">👁️</button>
+        </td>
+        <td class="text-center">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary py-0 px-2" title="Edit Akun" onclick="openEditAdminModal(${i})">✏️</button>
+            ${cloudAdmins.length > 1 ? `<button class="btn btn-outline-danger py-0 px-2" title="Hapus Akun" onclick="deleteAdminAccount('${acc.user}')">🗑️</button>` : ''}
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function toggleViewTablePass(idx, realPass) {
+    const el = document.getElementById(`passSpan_${idx}`);
+    if (el.innerText === '••••••••') {
+      el.innerText = realPass;
+    } else {
+      el.innerText = '••••••••';
+    }
+  }
+
+  function createNewAdmin() {
+    const u = document.getElementById('newUsername').value.trim();
+    const p = document.getElementById('newPasscode').value.trim();
+    const r = document.getElementById('newRole').value;
+    const btn = document.getElementById('btnAddAdmin');
+
+    if (cloudAdmins.some(a => a.user.toLowerCase() === u.toLowerCase())) {
+      showCustomAlert('Peringatan', 'Username sudah terdaftar di database!', '⚠️');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = 'Menyimpan...';
+
+    const payload = new URLSearchParams();
+    payload.append('action', 'addAdmin');
+    payload.append('user', u);
+    payload.append('pass', p);
+    payload.append('role', r);
+
+    fetch(SCRIPT_URL, { method: 'POST', body: payload })
+      .then(() => {
+        document.getElementById('addAdminForm').reset();
+        manageAdminModalEl.hide();
+        fetchAdminsFromCloud();
+        showCustomAlert('Sukses', `Admin baru "${u}" (${r}) berhasil ditambahkan!`, '✅');
+      })
+      .catch(() => {
+        showCustomAlert('Gagal', 'Gagal menambahkan admin ke cloud.', '⚠️');
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerText = 'Tambah';
+      });
+  }
+
+  function openEditAdminModal(idx) {
+    const acc = cloudAdmins[idx];
+    if (!acc) return;
+
+    document.getElementById('editAdminUsername').value = acc.user;
+    document.getElementById('editAdminPasscode').value = acc.pass;
+    document.getElementById('editAdminRole').value = acc.role;
+
+    manageAdminModalEl.hide();
+    editAdminModalEl.show();
+  }
+
+  function saveEditedAdminAccount() {
+    const u = document.getElementById('editAdminUsername').value;
+    const newPass = document.getElementById('editAdminPasscode').value.trim();
+    const newRole = document.getElementById('editAdminRole').value;
+    const btn = document.getElementById('btnSaveAdminEdit');
+
+    if (!newPass) {
+      showCustomAlert('Peringatan', 'Passcode tidak boleh kosong!', '⚠️');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = 'Menyimpan...';
+
+    const payload = new URLSearchParams();
+    payload.append('action', 'updateAdmin');
+    payload.append('user', u);
+    payload.append('newPass', newPass);
+    payload.append('newRole', newRole);
+
+    fetch(SCRIPT_URL, { method: 'POST', body: payload })
+      .then(() => {
+        if (currentLoggedInAdmin.user === u) {
+          currentLoggedInAdmin.pass = newPass;
+          currentLoggedInAdmin.role = newRole;
+          setAdminMode(true);
+        }
+        editAdminModalEl.hide();
+        fetchAdminsFromCloud();
+        showCustomAlert('Berhasil', 'Akun berhasil diperbarui!', '✅');
+      })
+      .catch(() => {
+        showCustomAlert('Gagal', 'Gagal mengupdate akun admin ke cloud.', '⚠️');
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerText = 'Simpan';
+      });
+  }
+
+  function deleteAdminAccount(username) {
+    if (username === currentLoggedInAdmin.user) {
+      showCustomAlert('Ditolak', 'Anda tidak bisa menghapus akun yang sedang Anda gunakan!', '🚫');
+      return;
+    }
+
+    const payload = new URLSearchParams();
+    payload.append('action', 'deleteAdmin');
+    payload.append('user', username);
+
+    fetch(SCRIPT_URL, { method: 'POST', body: payload })
+      .then(() => {
+        fetchAdminsFromCloud();
+        showCustomAlert('Dihapus', `Akun "${username}" berhasil dihapus.`, '🗑️');
+      })
+      .catch(() => {
+        showCustomAlert('Gagal', 'Gagal menghapus akun dari cloud.', '⚠️');
+      });
   }
 
   function fetchOrders() {
@@ -1015,7 +1283,6 @@
     });
   });
 
-  // FUNGSI BUAT INVOICE PDF INSTAN PER CUSTOMER
   function generateInvoicePDF(idx) {
     const o = orders[idx];
     if (!o) return;
@@ -1028,7 +1295,6 @@
     const feeJastip = Number(o.feeJastip) || 0;
     const subtotal = (hargaProduk + feeJastip) * qty;
 
-    // Masukkan data ke template invoice
     document.getElementById('invNumber').innerText = `INV-${new Date().getFullYear()}-${String(idx + 1).padStart(4, '0')}`;
     document.getElementById('invCustName').innerText = o.namaCustomer || '-';
     document.getElementById('invCustAddress').innerText = o.alamatCod || '-';
@@ -1249,7 +1515,7 @@
             <select class="form-select form-select-sm ${!isBolu ? 'd-none' : ''}" id="editVarianBolu" onchange="handleEditBoluVarianChange()">
               <option value="Pancake Coklat" data-harga="27000" ${o.varianProduk === 'Pancake Coklat' ? 'selected' : ''}>Pancake Coklat</option>
               <option value="Pancake Keju" data-harga="27000" ${o.varianProduk === 'Pancake Keju' ? 'selected' : ''}>Pancake Keju</option>
-              <option value="LAINNYA" data-harga="0">Lainnya / Bukan Pancake (Ketik Manual)</option>
+              <option value="LAINNYA" data-harga="0">Lainnya</option>
             </select>
             <input type="text" class="form-control form-control-sm ${(isTiramisusu || (isBolu && (o.varianProduk === 'Pancake Coklat' || o.varianProduk === 'Pancake Keju'))) ? 'd-none' : ''}" id="editVarianManual" value="${o.varianProduk || 'Varian Rasa'}" onclick="this.select()">
           </div>
@@ -1621,6 +1887,7 @@
 
   setAdminMode(false);
   handleTokoChange();
+  fetchAdminsFromCloud();
 </script>
 </body>
 </html>
