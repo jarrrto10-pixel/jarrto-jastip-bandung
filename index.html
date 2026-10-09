@@ -37,6 +37,7 @@
     .status-log-Cancelled { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
     .summary-card { border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; padding: 10px 12px; }
+    .select-status-table { font-size: 0.75rem; padding: 2px 6px; font-weight: 600; border-radius: 6px; }
   </style>
 </head>
 <body class="py-3">
@@ -189,12 +190,12 @@
               </div>
             </div>
 
-            <!-- Kolom 3: Pendapatan Terkumpul & Fee Keseluruhan -->
+            <!-- Kolom 3: Pendapatan Terkumpul (Qty x Harga Produk) & Fee Keseluruhan -->
             <div class="col-md-4">
               <div class="summary-card mb-2 border-dark-subtle bg-white">
                 <span class="text-dark fw-semibold d-block" style="font-size: 0.72rem;">🏦 Total Pendapatan Terkumpul</span>
                 <strong class="text-dark fs-6" id="sumPendapatanTerkumpul">Rp 0</strong>
-                <small class="text-muted d-block" style="font-size: 0.65rem;">Uang masuk (Full Payment + Order Only)</small>
+                <small class="text-muted d-block" style="font-size: 0.65rem;">Total modal/harga asli (Qty × Harga Produk)</small>
               </div>
               <div class="summary-card border-info-subtle bg-info-subtle">
                 <span class="text-info-emphasis fw-semibold d-block" style="font-size: 0.72rem;">📈 Total Fee Keseluruhan</span>
@@ -969,6 +970,50 @@
     return `badge-status status-log-${safe}`;
   }
 
+  // Fungsi Quick Update Status untuk Superadmin langsung dari baris tabel
+  function updateSingleStatusDirect(rowIndex, fieldName, newVal) {
+    const targetOrder = orders.find(o => o.rowIndex == rowIndex);
+    if (!targetOrder) return;
+
+    if (fieldName === 'statusOrder') {
+      targetOrder.statusOrder = newVal;
+    } else if (fieldName === 'statusFulfillment') {
+      targetOrder.statusFulfillment = newVal;
+    }
+
+    const payload = new URLSearchParams();
+    payload.append('action', 'editOrder');
+    payload.append('rowIndex', targetOrder.rowIndex);
+    payload.append('namaCustomer', targetOrder.namaCustomer || '');
+    payload.append('alamatCod', targetOrder.alamatCod || '');
+    payload.append('tokoPesanan', targetOrder.tokoPesanan || '');
+    payload.append('lokasiToko', targetOrder.lokasiToko || '-');
+    payload.append('varianProduk', targetOrder.varianProduk || '');
+    payload.append('batchJastip', formatCleanDate(targetOrder.batchJastip));
+    payload.append('dayaTahan', targetOrder.dayaTahan || 'Lihat Expired Date Pada Item');
+    payload.append('qty', targetOrder.qty || 1);
+    payload.append('hargaProduk', targetOrder.hargaProduk || 0);
+    payload.append('feeJastip', targetOrder.feeJastip || 0);
+    payload.append('hargaJual', targetOrder.hargaJual || 0);
+    payload.append('totalTagihan', targetOrder.totalTagihan || 0);
+    payload.append('statusOrder', normalizePaymentStatus(targetOrder.statusOrder));
+    payload.append('statusFulfillment', normalizeLogisticsStatus(targetOrder.statusFulfillment, targetOrder.statusOrder));
+
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: payload
+    })
+    .then(() => {
+      showCustomAlert('Berhasil Diubah', `Status diperbarui menjadi "${newVal}"!`, '✅', 1200);
+      renderTable();
+    })
+    .catch(err => {
+      console.error(err);
+      showCustomAlert('Gagal', 'Gagal memperbarui status ke cloud.', '⚠️');
+      fetchOrders();
+    });
+  }
+
   function formatCleanDate(str) {
     if (!str) return '-';
     if (typeof str === 'string' && str.includes('T')) {
@@ -1388,6 +1433,7 @@
     let sumFeeLunasVal = 0;
     let sumFeeBelumLunasVal = 0;
     let sumTotalFeeKeseluruhan = 0;
+    let sumTotalModalAsliKeseluruhan = 0; // Rumus: Qty * Harga Produk Asli
 
     const filtered = orders.filter(o => {
       const nama = String(o.namaCustomer || '').toLowerCase();
@@ -1423,7 +1469,8 @@
       const totalItem = (Number(o.totalTagihan) || (modalItem + feeItem));
       const pStatus = normalizePaymentStatus(o.statusOrder);
 
-      // Hitung total fee keseluruhan dari semua order
+      // Akumulasi Qty x Harga Produk Asli & Total Fee Keseluruhan
+      sumTotalModalAsliKeseluruhan += modalItem;
       sumTotalFeeKeseluruhan += feeItem;
 
       if (pStatus === 'Full Payment') {
@@ -1435,18 +1482,15 @@
       } else if (pStatus === 'Fee Only') {
         sumFeeLunasVal += feeItem;       // Fee sudah dibayar
       } else if (pStatus === 'Unpaid') {
-        sumFeeBelumLunasVal += feeItem;  // Fee belum dibayar sama sekali
+        sumFeeBelumLunasVal += feeItem;  // Fee belum dibayar
       }
     });
-
-    // Total pendapatan terkumpul = uang riil masuk (Full Payment + Order Only)
-    const sumPendapatanTerkumpulVal = sumFullPay + sumOrderOnlyVal;
 
     document.getElementById('sumFullPayment').innerText = 'Rp ' + sumFullPay.toLocaleString('id-ID');
     document.getElementById('sumOrderOnly').innerText = 'Rp ' + sumOrderOnlyVal.toLocaleString('id-ID');
     document.getElementById('sumFeeLunas').innerText = 'Rp ' + sumFeeLunasVal.toLocaleString('id-ID');
     document.getElementById('sumFeeBelumLunas').innerText = 'Rp ' + sumFeeBelumLunasVal.toLocaleString('id-ID');
-    document.getElementById('sumPendapatanTerkumpul').innerText = 'Rp ' + sumPendapatanTerkumpulVal.toLocaleString('id-ID');
+    document.getElementById('sumPendapatanTerkumpul').innerText = 'Rp ' + sumTotalModalAsliKeseluruhan.toLocaleString('id-ID');
     document.getElementById('sumFeeKeseluruhan').innerText = 'Rp ' + sumTotalFeeKeseluruhan.toLocaleString('id-ID');
     document.getElementById('totalOrderBadge').innerText = `Total: ${filtered.length}`;
 
@@ -1463,6 +1507,29 @@
       const lokasiTokoVal = (o.lokasiToko && !o.lokasiToko.includes('Sabtu') && o.lokasiToko !== '-') ? o.lokasiToko : '-';
       const payStatus = normalizePaymentStatus(o.statusOrder);
       const logStatus = normalizeLogisticsStatus(o.statusFulfillment || o.statusOrder, payStatus);
+
+      // Mode Superadmin: Dropdown interaktif langsung di baris tabel
+      const paymentCellHtml = isSuperAdmin ? `
+        <select class="form-select form-select-sm select-status-table ${getPaymentBadgeClass(payStatus)}" 
+                onchange="updateSingleStatusDirect(${o.rowIndex}, 'statusOrder', this.value)">
+          <option value="Full Payment" ${payStatus === 'Full Payment' ? 'selected' : ''}>Full Payment</option>
+          <option value="Order Only" ${payStatus === 'Order Only' ? 'selected' : ''}>Order Only</option>
+          <option value="Fee Only" ${payStatus === 'Fee Only' ? 'selected' : ''}>Fee Only</option>
+          <option value="Unpaid" ${payStatus === 'Unpaid' ? 'selected' : ''}>Unpaid</option>
+          <option value="Refunded" ${payStatus === 'Refunded' ? 'selected' : ''}>Refunded</option>
+        </select>
+      ` : `<span class="${getPaymentBadgeClass(payStatus)}">${payStatus}</span>`;
+
+      const trackingCellHtml = isSuperAdmin ? `
+        <select class="form-select form-select-sm select-status-table ${getLogisticsBadgeClass(logStatus)}" 
+                onchange="updateSingleStatusDirect(${o.rowIndex}, 'statusFulfillment', this.value)">
+          <option value="Order Placed" ${logStatus === 'Order Placed' ? 'selected' : ''}>Order Placed</option>
+          <option value="Purchased" ${logStatus === 'Purchased' ? 'selected' : ''}>Purchased</option>
+          <option value="In Transit" ${logStatus === 'In Transit' ? 'selected' : ''}>In Transit</option>
+          <option value="Delivered" ${logStatus === 'Delivered' ? 'selected' : ''}>Delivered</option>
+          <option value="Cancelled" ${logStatus === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+        </select>
+      ` : `<span class="${getLogisticsBadgeClass(logStatus)}">${logStatus}</span>`;
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -1484,12 +1551,8 @@
         </td>
         <td><strong>${o.qty || 1}</strong></td>
         <td><strong class="text-primary">Rp ${Number(o.totalTagihan || 0).toLocaleString('id-ID')}</strong></td>
-        <td>
-          <span class="${getPaymentBadgeClass(payStatus)}">${payStatus}</span>
-        </td>
-        <td>
-          <span class="${getLogisticsBadgeClass(logStatus)}">${logStatus}</span>
-        </td>
+        <td>${paymentCellHtml}</td>
+        <td>${trackingCellHtml}</td>
         <td>
           <div class="btn-group" role="group">
             <button class="btn btn-outline-secondary btn-sm py-0 px-2" title="Lihat Detail" onclick="showPreview(${index})">👁️</button>
