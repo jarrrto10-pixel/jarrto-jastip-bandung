@@ -38,6 +38,8 @@
 
     .summary-card { border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; padding: 10px 12px; }
     .select-status-table { font-size: 0.75rem; padding: 2px 6px; font-weight: 600; border-radius: 6px; }
+    .logo-clickable { cursor: pointer; transition: transform 0.15s; }
+    .logo-clickable:active { transform: scale(0.92); }
   </style>
 </head>
 <body class="py-3">
@@ -45,16 +47,19 @@
 <div class="container-fluid px-3 px-md-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom">
     <div class="d-flex align-items-center gap-2">
-      <div style="width: 38px; height: 38px; border-radius: 50%; background: #0d6efd; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1rem;">
+      <!-- LOGO KLIK UNTUK MASUK MODE ADMIN -->
+      <div id="appLogoBtn" class="logo-clickable" onclick="handleLogoAdminClick()" title="Klik untuk Login Admin" style="width: 38px; height: 38px; border-radius: 50%; background: #0d6efd; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1rem; user-select: none;">
         JB
       </div>
       <div>
-        <h4 class="fw-bold mb-0 text-primary" id="appTitle" style="cursor: pointer;" title="Jastipinyuk Bandung">Jastipinyuk Bandung</h4>
+        <!-- JUDUL KLIK UNTUK KEMBALI KE FORM CUSTOMER / TOGGLE TAMPILAN -->
+        <h4 class="fw-bold mb-0 text-primary" id="appTitle" onclick="handleTitleToggleView()" style="cursor: pointer; user-select: none;" title="Klik untuk beralih tampilan Form / Monitoring">Jastipinyuk Bandung</h4>
         <p class="text-muted small mb-0 d-none" id="appSubtitle" style="font-size: 0.75rem;">Pencatatan Pesanan & Monitoring <span id="adminBadge" class="badge bg-dark ms-1 d-none"></span></p>
       </div>
     </div>
     <!-- Kontrol Admin -->
     <div id="adminControls" class="d-none mt-2 mt-sm-0">
+      <button class="btn btn-outline-secondary btn-sm me-1 fw-semibold" onclick="toggleFormCustomerView()">📝 Mode Input</button>
       <button class="btn btn-outline-primary btn-sm me-1 fw-semibold" onclick="fetchOrders()">🔄 Refresh</button>
       <a id="btnOpenSheet" class="btn btn-success btn-sm me-1 fw-semibold d-none" target="_blank" href="https://docs.google.com/spreadsheets/d/1pqptORPY_VySJQUnzlbAYkV0b6I2ttg109qBMb402ig/preview">📊 Buka Sheets</a>
       <button id="btnExportCSV" class="btn btn-outline-success btn-sm me-1 fw-semibold" onclick="exportToCSV()">📥 Unduh CSV</button>
@@ -90,15 +95,22 @@
             </div>
           </div>
 
-          <!-- CONTAINER VARIAN RASA -->
+          <!-- CONTAINER VARIAN RASA (TIRAMISUSU & BOLU SUSU LEMBANG DROPDOWN) -->
           <div class="mb-2" id="varianContainer">
             <label class="form-label small fw-semibold mb-1">Varian Rasa</label>
+            <!-- Dropdown Varian Tiramisusu -->
             <select class="form-select" id="varianTiramisusuSelect" onchange="handleTiramisusuVarianChange()">
               <option value="Original" data-harga="89000">Original</option>
               <option value="Cookies n Cream" data-harga="89000">Cookies n Cream</option>
               <option value="Matcha" data-harga="99000">Matcha</option>
               <option value="Pistachio Kunafa" data-harga="119000">Pistachio Kunafa</option>
             </select>
+            <!-- Dropdown Varian Bolu Susu Lembang -->
+            <select class="form-select d-none" id="varianBoluLembangSelect" onchange="handleBoluLembangVarianChange()">
+              <option value="Pancake Coklat" data-harga="27000">Pancake Coklat</option>
+              <option value="Pancake Keju" data-harga="27000">Pancake Keju</option>
+            </select>
+            <!-- Input Teks untuk brand lainnya -->
             <input type="text" class="form-control d-none" id="varianProdukManual" placeholder="Varian Rasa" value="Varian Rasa"
                    onclick="this.select()" 
                    onfocus="if(this.value==='Varian Rasa') this.value='';" 
@@ -483,6 +495,38 @@
     }
   }
 
+  // Klik logo untuk login admin
+  function handleLogoAdminClick() {
+    if (!currentLoggedInAdmin) {
+      document.getElementById('adminUser').value = '';
+      document.getElementById('adminPass').value = '';
+      document.getElementById('loginError').classList.add('d-none');
+      loginModalEl.show();
+      fetchAdminsFromCloud();
+    } else {
+      showCustomAlert('Info', `Sudah login sebagai ${currentLoggedInAdmin.user} (${currentLoggedInAdmin.role})`, 'ℹ️', 1200);
+    }
+  }
+
+  // Klik judul: jika dalam mode admin, switch tampilan antara form customer dan panel monitoring
+  function handleTitleToggleView() {
+    if (!currentLoggedInAdmin) return;
+    const formContainer = document.getElementById('formContainer');
+    const panel = document.getElementById('adminPanel');
+
+    if (formContainer.classList.contains('d-none')) {
+      formContainer.classList.remove('d-none');
+      panel.classList.add('d-none');
+    } else {
+      formContainer.classList.add('d-none');
+      panel.classList.remove('d-none');
+    }
+  }
+
+  function toggleFormCustomerView() {
+    handleTitleToggleView();
+  }
+
   function parseDateToWIB(dateStr) {
     if (!dateStr) return null;
     if (typeof dateStr === 'string' && dateStr.includes('T')) {
@@ -561,24 +605,33 @@
     document.getElementById('editReady').value = res.formatted;
   }
 
+  // Handle pergantian brand toko: Tiramisusu & Bolu Susu Lembang mendapatkan dropdown khusus
   function handleTokoChange() {
     const toko = document.getElementById('tokoPesanan').value;
-    const selectEl = document.getElementById('varianTiramisusuSelect');
+    const tiramisusuSelect = document.getElementById('varianTiramisusuSelect');
+    const boluLembangSelect = document.getElementById('varianBoluLembangSelect');
     const textEl = document.getElementById('varianProdukManual');
     const hargaDisplayEl = document.getElementById('hargaProdukDisplay');
-    const hargaValEl = document.getElementById('hargaProduk');
 
     if (toko === 'Tiramisusu') {
-      selectEl.classList.remove('d-none');
+      tiramisusuSelect.classList.remove('d-none');
+      boluLembangSelect.classList.add('d-none');
       textEl.classList.add('d-none');
       handleTiramisusuVarianChange();
+    } else if (toko === 'Bolu Susu Lembang') {
+      tiramisusuSelect.classList.add('d-none');
+      boluLembangSelect.classList.remove('d-none');
+      textEl.classList.add('d-none');
+      handleBoluLembangVarianChange();
     } else {
-      selectEl.classList.add('d-none');
+      tiramisusuSelect.classList.add('d-none');
+      boluLembangSelect.classList.add('d-none');
       textEl.classList.remove('d-none');
       hargaDisplayEl.readOnly = false;
       hargaDisplayEl.classList.remove('bg-light');
       
-      if (hargaValEl.value === '89000' || hargaValEl.value === '99000' || hargaValEl.value === '119000') {
+      const hargaValEl = document.getElementById('hargaProduk');
+      if (['89000', '99000', '119000', '27000'].includes(hargaValEl.value)) {
         hargaValEl.value = '0';
         hargaDisplayEl.value = 'Rp 0';
       }
@@ -590,6 +643,21 @@
     const selectEl = document.getElementById('varianTiramisusuSelect');
     const selectedOption = selectEl.options[selectEl.selectedIndex];
     const harga = parseInt(selectedOption.getAttribute('data-harga')) || 89000;
+    
+    const hargaDisplayEl = document.getElementById('hargaProdukDisplay');
+    const hargaValEl = document.getElementById('hargaProduk');
+
+    hargaValEl.value = harga;
+    hargaDisplayEl.value = 'Rp ' + Number(harga).toLocaleString('id-ID');
+    hargaDisplayEl.readOnly = true;
+    hargaDisplayEl.classList.add('bg-light');
+    hitungTotal();
+  }
+
+  function handleBoluLembangVarianChange() {
+    const selectEl = document.getElementById('varianBoluLembangSelect');
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    const harga = parseInt(selectedOption.getAttribute('data-harga')) || 27000;
     
     const hargaDisplayEl = document.getElementById('hargaProdukDisplay');
     const hargaValEl = document.getElementById('hargaProduk');
@@ -970,7 +1038,7 @@
     return `badge-status status-log-${safe}`;
   }
 
-  // Fungsi Quick Update Status untuk Superadmin langsung dari baris tabel
+  // Quick Update Status Langsung dari Baris Tabel (Khusus Superadmin)
   function updateSingleStatusDirect(rowIndex, fieldName, newVal) {
     const targetOrder = orders.find(o => o.rowIndex == rowIndex);
     if (!targetOrder) return;
@@ -1045,6 +1113,8 @@
     let varian = '';
     if (brand === 'Tiramisusu') {
       varian = document.getElementById('varianTiramisusuSelect').value;
+    } else if (brand === 'Bolu Susu Lembang') {
+      varian = document.getElementById('varianBoluLembangSelect').value;
     } else {
       varian = document.getElementById('varianProdukManual').value;
     }
@@ -1062,7 +1132,8 @@
       feeJastip: feePerPcs,
       hargaJual: hargaJual,
       totalTagihan: totalTagihan,
-      statusOrder: "Unpaid"
+      statusOrder: "Unpaid",
+      statusFulfillment: "Order Placed"
     };
 
     const formData = new URLSearchParams();
@@ -1130,17 +1201,25 @@
 
   function handleEditTokoChange() {
     const toko = document.getElementById('editToko').value;
-    const selectEl = document.getElementById('editVarianTiramisusu');
+    const selectTiramisusu = document.getElementById('editVarianTiramisusu');
+    const selectBolu = document.getElementById('editVarianBolu');
     const textEl = document.getElementById('editVarianManual');
     const hargaDisplayEl = document.getElementById('editHargaDisplay');
     const hargaValEl = document.getElementById('editHarga');
 
     if (toko === 'Tiramisusu') {
-      selectEl.classList.remove('d-none');
+      selectTiramisusu.classList.remove('d-none');
+      selectBolu.classList.add('d-none');
       textEl.classList.add('d-none');
       handleEditTiramisusuVarianChange();
+    } else if (toko === 'Bolu Susu Lembang') {
+      selectTiramisusu.classList.add('d-none');
+      selectBolu.classList.remove('d-none');
+      textEl.classList.add('d-none');
+      handleEditBoluVarianChange();
     } else {
-      selectEl.classList.add('d-none');
+      selectTiramisusu.classList.add('d-none');
+      selectBolu.classList.add('d-none');
       textEl.classList.remove('d-none');
       hargaDisplayEl.readOnly = false;
       hargaDisplayEl.classList.remove('bg-light');
@@ -1152,6 +1231,21 @@
     const selectEl = document.getElementById('editVarianTiramisusu');
     const selectedOption = selectEl.options[selectEl.selectedIndex];
     const harga = parseInt(selectedOption.getAttribute('data-harga')) || 89000;
+    
+    const hargaDisplayEl = document.getElementById('editHargaDisplay');
+    const hargaValEl = document.getElementById('editHarga');
+
+    hargaValEl.value = harga;
+    hargaDisplayEl.value = 'Rp ' + Number(harga).toLocaleString('id-ID');
+    hargaDisplayEl.readOnly = true;
+    hargaDisplayEl.classList.add('bg-light');
+    hitungEditTotal();
+  }
+
+  function handleEditBoluVarianChange() {
+    const selectEl = document.getElementById('editVarianBolu');
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    const harga = parseInt(selectedOption.getAttribute('data-harga')) || 27000;
     
     const hargaDisplayEl = document.getElementById('editHargaDisplay');
     const hargaValEl = document.getElementById('editHarga');
@@ -1199,6 +1293,7 @@
     const isSuper = currentLoggedInAdmin && currentLoggedInAdmin.role === 'superadmin';
     const defaultReady = getCleanReadyText(null, o.batchJastip);
     const isTiramisusu = curBrand === 'Tiramisusu';
+    const isBolu = curBrand === 'Bolu Susu Lembang';
     const currentPrice = Number(o.hargaProduk) || 0;
     const curLokasi = (o.lokasiToko && !o.lokasiToko.includes('Sabtu') && o.lokasiToko !== '-') ? o.lokasiToko : '';
     const payStatus = normalizePaymentStatus(o.statusOrder);
@@ -1243,7 +1338,11 @@
               <option value="Matcha" data-harga="99000" ${o.varianProduk === 'Matcha' ? 'selected' : ''}>Matcha</option>
               <option value="Pistachio Kunafa" data-harga="119000" ${o.varianProduk === 'Pistachio Kunafa' ? 'selected' : ''}>Pistachio Kunafa</option>
             </select>
-            <input type="text" class="form-control form-control-sm ${isTiramisusu ? 'd-none' : ''}" id="editVarianManual" value="${o.varianProduk || 'Varian Rasa'}" onclick="this.select()">
+            <select class="form-select form-select-sm ${!isBolu ? 'd-none' : ''}" id="editVarianBolu" onchange="handleEditBoluVarianChange()">
+              <option value="Pancake Coklat" data-harga="27000" ${o.varianProduk === 'Pancake Coklat' ? 'selected' : ''}>Pancake Coklat</option>
+              <option value="Pancake Keju" data-harga="27000" ${o.varianProduk === 'Pancake Keju' ? 'selected' : ''}>Pancake Keju</option>
+            </select>
+            <input type="text" class="form-control form-control-sm ${(isTiramisusu || isBolu) ? 'd-none' : ''}" id="editVarianManual" value="${o.varianProduk || 'Varian Rasa'}" onclick="this.select()">
           </div>
         </div>
         <div class="row g-2 mb-2">
@@ -1265,7 +1364,7 @@
           </div>
           <div class="col-4">
             <label class="form-label small fw-semibold mb-1">Harga Item / Pcs</label>
-            <input type="text" class="form-control form-control-sm ${isTiramisusu ? 'bg-light' : ''} fw-semibold" id="editHargaDisplay" value="Rp ${currentPrice.toLocaleString('id-ID')}" ${isTiramisusu ? 'readonly' : ''} oninput="handleEditManualHargaInput(this)">
+            <input type="text" class="form-control form-control-sm ${(isTiramisusu || isBolu) ? 'bg-light' : ''} fw-semibold" id="editHargaDisplay" value="Rp ${currentPrice.toLocaleString('id-ID')}" ${(isTiramisusu || isBolu) ? 'readonly' : ''} oninput="handleEditManualHargaInput(this)">
             <input type="hidden" id="editHarga" value="${currentPrice}">
           </div>
           <div class="col-4">
@@ -1332,6 +1431,8 @@
     let varian = '';
     if (brand === 'Tiramisusu') {
       varian = document.getElementById('editVarianTiramisusu').value;
+    } else if (brand === 'Bolu Susu Lembang') {
+      varian = document.getElementById('editVarianBolu').value;
     } else {
       varian = document.getElementById('editVarianManual').value;
     }
@@ -1469,20 +1570,19 @@
       const totalItem = (Number(o.totalTagihan) || (modalItem + feeItem));
       const pStatus = normalizePaymentStatus(o.statusOrder);
 
-      // Akumulasi Qty x Harga Produk Asli & Total Fee Keseluruhan
       sumTotalModalAsliKeseluruhan += modalItem;
       sumTotalFeeKeseluruhan += feeItem;
 
       if (pStatus === 'Full Payment') {
-        sumFullPay += totalItem;        // Total Full Payment = (Item + Fee) * Qty
-        sumFeeLunasVal += feeItem;      // Fee sudah lunas
+        sumFullPay += totalItem;        
+        sumFeeLunasVal += feeItem;      
       } else if (pStatus === 'Order Only') {
-        sumOrderOnlyVal += modalItem;    // Total Payment Order Only = Harga Item * Qty
-        sumFeeBelumLunasVal += feeItem;  // Fee tertunggak dari Order Only
+        sumOrderOnlyVal += modalItem;    
+        sumFeeBelumLunasVal += feeItem;  
       } else if (pStatus === 'Fee Only') {
-        sumFeeLunasVal += feeItem;       // Fee sudah dibayar
+        sumFeeLunasVal += feeItem;       
       } else if (pStatus === 'Unpaid') {
-        sumFeeBelumLunasVal += feeItem;  // Fee belum dibayar
+        sumFeeBelumLunasVal += feeItem;  
       }
     });
 
@@ -1508,7 +1608,7 @@
       const payStatus = normalizePaymentStatus(o.statusOrder);
       const logStatus = normalizeLogisticsStatus(o.statusFulfillment || o.statusOrder, payStatus);
 
-      // Mode Superadmin: Dropdown interaktif langsung di baris tabel
+      // Superadmin: Inline Quick Dropdown langsung di tabel
       const paymentCellHtml = isSuperAdmin ? `
         <select class="form-select form-select-sm select-status-table ${getPaymentBadgeClass(payStatus)}" 
                 onchange="updateSingleStatusDirect(${o.rowIndex}, 'statusOrder', this.value)">
