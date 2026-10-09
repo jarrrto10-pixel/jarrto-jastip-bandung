@@ -24,12 +24,14 @@
       border-radius: 6px;
       display: inline-block;
     }
+    /* Accounting Payment Status Styles */
     .status-pay-Full-Payment { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
     .status-pay-Order-Only { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
     .status-pay-Fee-Only { background-color: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
     .status-pay-Unpaid { background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
     .status-pay-Refunded { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
+    /* Logistics Tracking Status Styles */
     .status-log-Order-Placed { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
     .status-log-Purchased { background-color: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
     .status-log-In-Transit { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
@@ -188,6 +190,7 @@
         <!-- RINGKASAN FINANSIAL -->
         <div id="summaryFinanceRow" class="mb-3">
           <div class="row g-2">
+            <!-- Kolom 1: Full Payment & Payment Order Only -->
             <div class="col-md-4">
               <div class="summary-card mb-2 border-success-subtle bg-success-subtle">
                 <span class="text-success-emphasis fw-semibold d-block" style="font-size: 0.72rem;">✅ Total Full Payment</span>
@@ -201,6 +204,7 @@
               </div>
             </div>
 
+            <!-- Kolom 2: Fee Lunas & Fee Belum Lunas -->
             <div class="col-md-4">
               <div class="summary-card mb-2 border-primary-subtle bg-primary-subtle">
                 <span class="text-primary-emphasis fw-semibold d-block" style="font-size: 0.72rem;">💵 Total Fee Lunas</span>
@@ -214,6 +218,7 @@
               </div>
             </div>
 
+            <!-- Kolom 3: Pendapatan Terkumpul (Qty x Harga Produk) & Fee Keseluruhan -->
             <div class="col-md-4">
               <div class="summary-card mb-2 border-dark-subtle bg-white">
                 <span class="text-dark fw-semibold d-block" style="font-size: 0.72rem;">🏦 Total Pendapatan Terkumpul</span>
@@ -551,10 +556,13 @@
 <script>
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzyzWSBP7AiSqerFcAB5xh6TNorQWe3iGsT-mrIttyXpu3H8hxxZ5BE82PhZ3euQ349/exec';
   
-  // Cache data admin awal agar verifikasi login instan (< 0.2 detik)
-  let cloudAdmins = [
-    { user: 'fajar', pass: '12345678', role: 'superadmin' }
+  // Kredensial Tetap / Bawaan agar login instan tanpa delay timeout jaringan
+  const FIXED_ADMINS = [
+    { user: 'fajar', pass: '12345678', role: 'superadmin' },
+    { user: 'admin', pass: 'admin123', role: 'admin' }
   ];
+
+  let cloudAdmins = [...FIXED_ADMINS];
   let currentLoggedInAdmin = null;
   let orders = [];
   let currentEditOrder = null;
@@ -862,9 +870,9 @@
     }
   }
 
-  // Proses login cepat menggunakan cache lokal terlebih dahulu
+  // Verifikasi login instan (Cek Akun Tetap & Cache Lokal terlebih dahulu tanpa delay timeout)
   function processLogin() {
-    const u = document.getElementById('adminUser').value.trim();
+    const u = document.getElementById('adminUser').value.trim().toLowerCase();
     const p = document.getElementById('adminPass').value.trim();
     const btn = document.getElementById('loginBtn');
     const err = document.getElementById('loginError');
@@ -873,32 +881,61 @@
     btn.innerText = "Memverifikasi...";
     err.classList.add('d-none');
 
-    // Cek di memori lokal terlebih dahulu
-    const localMatch = cloudAdmins.find(a => a.user.toLowerCase() === u.toLowerCase() && a.pass === p);
+    // 1. Cek langsung ke akun default/tetap (Instan)
+    const fixedMatch = FIXED_ADMINS.find(a => a.user.toLowerCase() === u && a.pass === p);
+    if (fixedMatch) {
+      currentLoggedInAdmin = fixedMatch;
+      loginModalEl.hide();
+      setAdminMode(true);
+      btn.disabled = false;
+      btn.innerText = "Masuk";
+      showCustomAlert('Berhasil Masuk', `Selamat datang, ${fixedMatch.user}!`, '👋', 1200);
+      fetchOrders();
+      return;
+    }
+
+    // 2. Cek ke akun yang sudah tersimpan di cache memori
+    const localMatch = cloudAdmins.find(a => a.user.toLowerCase() === u && a.pass === p);
     if (localMatch) {
       currentLoggedInAdmin = localMatch;
       loginModalEl.hide();
       setAdminMode(true);
       btn.disabled = false;
       btn.innerText = "Masuk";
+      showCustomAlert('Berhasil Masuk', `Selamat datang, ${localMatch.user}!`, '👋', 1200);
       fetchOrders();
       return;
     }
 
-    // Jika tidak ada di cache lokal, cek sinkronisasi cloud
-    fetchAdminsFromCloud(() => {
-      const match = cloudAdmins.find(a => a.user.toLowerCase() === u.toLowerCase() && a.pass === p);
-      if (match) {
-        currentLoggedInAdmin = match;
-        loginModalEl.hide();
-        setAdminMode(true);
-        fetchOrders();
-      } else {
+    // 3. Fallback jika akun baru dibuat di sheet: fetch ke cloud dengan timeout 4 detik
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    fetch(`${SCRIPT_URL}?action=getAdmins`, { signal: controller.signal })
+      .then(res => res.json())
+      .then(data => {
+        clearTimeout(timeoutId);
+        if (Array.isArray(data)) {
+          cloudAdmins = data;
+          const match = cloudAdmins.find(a => a.user.toLowerCase() === u && a.pass === p);
+          if (match) {
+            currentLoggedInAdmin = match;
+            loginModalEl.hide();
+            setAdminMode(true);
+            showCustomAlert('Berhasil Masuk', `Selamat datang, ${match.user}!`, '👋', 1200);
+            fetchOrders();
+            return;
+          }
+        }
         err.classList.remove('d-none');
-      }
-      btn.disabled = false;
-      btn.innerText = "Masuk";
-    });
+      })
+      .catch(() => {
+        err.classList.remove('d-none');
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerText = "Masuk";
+      });
   }
 
   function logoutAdmin() {
@@ -1151,6 +1188,7 @@
     return `badge-status status-log-${safe}`;
   }
 
+  // Quick Update Status Langsung dari Baris Tabel (Khusus Superadmin)
   function updateSingleStatusDirect(rowIndex, fieldName, newVal) {
     const targetOrder = orders.find(o => o.rowIndex == rowIndex);
     if (!targetOrder) return;
@@ -1283,6 +1321,7 @@
     });
   });
 
+  // FUNGSI BUAT INVOICE PDF INSTAN PER CUSTOMER
   function generateInvoicePDF(idx) {
     const o = orders[idx];
     if (!o) return;
